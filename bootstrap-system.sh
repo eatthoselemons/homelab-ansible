@@ -1,0 +1,53 @@
+#!/bin/bash
+trap_msg='s=${?}; echo "${0}: Error on line "${LINENO}": ${BASH_COMMAND}"; exit ${s}'    
+set -uo pipefail    
+trap "${trap_msg}" ERR    
+
+virtualEnvPath=$1/ansible-venv
+
+# Install packages needed on a base Debian system
+apt update
+apt --yes install  --no-install-recommends $(
+echo "build-essential
+      python3-httpx
+      python3-dev
+      python3-netaddr
+      python3-pip
+      python3-setuptools
+      python3-wheel
+      python3-venv
+      sshpass" )
+
+# package requirements
+# python3-httpx - ansible opnsense
+
+mkdir -p ${virtualEnvPath}
+
+# Create requirements file for pip
+echo "
+ansible
+ansible-cmdb
+ansible-core
+ansible-lint
+yamllint
+infisical-python
+infisicalsdk
+httpx
+" > ${virtualEnvPath}/requirements.txt
+
+# Create virtual environment we we install ansible into
+if test ! -x ${virtualEnvPath}/bin/pip ; then
+    /usr/bin/python3 -m venv ${virtualEnvPath}/
+fi
+
+# Upgrade pip
+${virtualEnvPath}/bin/pip install --upgrade pip
+
+# install/upgrade ansible in the virtual environment
+${virtualEnvPath}/bin/pip install --upgrade --requirement ${virtualEnvPath}/requirements.txt
+
+
+source ${virtualEnvPath}/bin/activate
+
+ansible-galaxy collection install infisical.vault
+ansible-galaxy collection install ansibleguy.opnsense
