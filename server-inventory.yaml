@@ -1,0 +1,8 @@
+opnsense:
+  hosts:
+    10.0.0.1
+
+upspi:
+  hosts:
+    10.0.0.11
+
