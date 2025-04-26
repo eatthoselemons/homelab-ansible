@@ -44,6 +44,20 @@
       ansible.builtin.debug:
         var: vlan.data
 
+    - name: add main vlan
+      ansibleguy.opnsense.interface_vlan:
+        interface: 're0'
+        tag: 10
+        description: 'main vlan'
+
+    - name: read vlan
+      ansibleguy.opnsense.list:
+        target: 'interface_vlan'
+      register: vlan
+
+    - name: printing
+      ansible.builtin.debug:
+        var: vlan.data
 
 
 
