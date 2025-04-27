@@ -6,3 +6,7 @@ upspi:
   hosts:
     10.0.0.11
 
+fast-host:
+  hosts:
+    10.0.0.38
+
