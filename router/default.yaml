@@ -35,6 +35,8 @@
       api_secret: "{{ opnsenseApiSecret.value }}"
 
   tasks:
+    - name: install libvirt
+
     - name: read vlan
       ansibleguy.opnsense.list:
         target: 'interface_vlan'
