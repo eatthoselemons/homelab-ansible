@@ -57,7 +57,8 @@ if test ! -x $1/git/ansible_systemd; then
 else
   cd $1/git/ansible_systemd
   git fetch
-  mkdir -p $1/git/homelab-ansible/roles
-  ln -s  $1/git/ansible_systemd $1/git/homelab-ansible/roles/ansible_systemd
 fi
+
+mkdir -p $1/.ansible/roles
+ln -s  $1/git/ansible_systemd $1/.ansible/roles
 

@@ -1,6 +1,6 @@
 - name: setup router system base
   hosts: router
-  gather_facts: no
+  gather_facts: yes
   vars:
     infisicalClientSecret: "{{ lookup('ansible.builtin.env', 'INFISICAL_CLIENT_SECRET', default=undef()) }}"
     systemSudoPassword: "{{ lookup(
@@ -17,12 +17,25 @@
     ansible_become_password: "{{ systemSudoPassword.value }}"
   roles:
     - role: stafwag.qemu_img
+      become: true
+      become_user: root
       vars:
         qemu_img:
           dest: /var/lib/libvirt/images/vyos-1.5.qcow2
           size: 20G
           format: qcow2
-    - role: 
+          overwrite: true
+    - role: ansible_systemd
+      become: true
+      become_user: root
+      systemd_network_netdevs:
+        lanBridge:
+          NetDev:
+            Kind: bridge
+      systemd_network_networks:
+        enp1:
+          Network:
+            DHCP: ipv4
   tasks:
     - name: get versions
       ansible.builtin.include_vars:
@@ -34,7 +47,6 @@
       ansible.builtin.apt:
         pkg:
           - "libvirt-daemon-system={{ versions.libvirtDaemonSystem }}"
-        update_cache: yes
         state: present
     - name: install latest deps
       become: true
@@ -48,8 +60,7 @@
           - "python3-lxml"
           - "python3-libvirt"
           - "bridge-utils"
-          - "netplan.io"
-        update_cache:
+        update_cache: yes
         state: present
     - name: start libvirtd
       become: true
