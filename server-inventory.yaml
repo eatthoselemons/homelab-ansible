@@ -10,3 +10,6 @@ fast-host:
   hosts:
     10.0.0.38
 
+router:
+  hosts:
+    10.0.0.57
