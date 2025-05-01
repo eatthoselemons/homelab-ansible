@@ -35,6 +35,8 @@ infisicalsdk
 httpx
 " > ${virtualEnvPath}/requirements.txt
 
+
+
 # Create virtual environment we we install ansible into
 if test ! -x ${virtualEnvPath}/bin/pip ; then
     /usr/bin/python3 -m venv ${virtualEnvPath}/
@@ -49,5 +51,13 @@ ${virtualEnvPath}/bin/pip install --upgrade --requirement ${virtualEnvPath}/requ
 
 source ${virtualEnvPath}/bin/activate
 
-ansible-galaxy collection install infisical.vault
-ansible-galaxy collection install ansibleguy.opnsense
+if test ! -x $1/git/ansible_systemd; then
+  cd $1/git/
+  git clone https://github.com/stuvusIT/ansible_systemd.git
+else
+  cd $1/git/ansible_systemd
+  git fetch
+  mkdir -p $1/git/homelab-ansible/roles
+  ln -s  $1/git/ansible_systemd $1/git/homelab-ansible/roles/ansible_systemd
+fi
+
