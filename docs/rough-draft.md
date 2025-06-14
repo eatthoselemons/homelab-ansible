@@ -16,7 +16,10 @@ switches: mikrotik
 
 hardware:
 uninterrutbable power supply: eaton 5px1500
-lenovo thin client + intel ethernet card
+
+"nexus"
+- lenovo thin client + intel ethernet card
+
 "epyc server"
 - 6 6tb sata HDDs to pcie sas/sata card
 - 1 4tb HDD to pcie sas card
