@@ -1,0 +1,16 @@
+---
+- name: Configure Nexus Node
+  hosts: nexus
+  become: true
+  roles:
+    - role: system_setup
+      tags: [system, always]
+    
+    - role: security_hardening
+      tags: [security, always]
+    
+    - role: vyos_setup
+      tags: [vyos]
+    
+    - role: services_vm_setup
+      tags: [services] 

@@ -1,0 +1,25 @@
+---
+- name: Install auditd
+  ansible.builtin.apt:
+    name: auditd
+    state: present
+    update_cache: yes
+
+- name: Ensure auditd service is enabled and running
+  ansible.builtin.systemd:
+    name: auditd
+    state: started
+    enabled: yes
+
+- name: Copy audit rules
+  ansible.builtin.template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/audit.rules
+    mode: '0640'
+    owner: root
+    group: root
+  notify: restart auditd
+
+- name: Ensure audit rules are loaded
+  ansible.builtin.command: augenrules --load
+  changed_when: false 
