@@ -7,7 +7,10 @@ platforms:
   - name: security-test
     image: debian:bullseye-slim
     pre_build_image: true
-    command: ""
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /tmp
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
     privileged: true
