@@ -1,0 +1,10 @@
+---
+- name: apply netplan
+  command: netplan apply
+
+- name: apply sysctl
+  command: sysctl -p
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes 

@@ -13,3 +13,20 @@ fast-host:
 router:
   hosts:
     10.0.0.57
+
+nexus:
+  hosts:
+    10.0.0.59
+  vars:
+    ansible_user: "{{ lookup('env', 'ANSIBLE_USER') }}"
+    ansible_ssh_private_key_file: "{{ lookup(
+      'infisical.vault.read_secrets',
+      universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea',
+      universal_auth_client_secret=infisicalClientSecret,
+      project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e',
+      path='/',
+      env_slug='prod',
+      url='https://app.infisical.com',
+      secret_name='ansible_ssh_key',
+      )
+    }}"

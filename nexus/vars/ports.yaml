@@ -1,0 +1,17 @@
+---
+# VyOS VM
+vyos_ssh_port: 2222
+vyos_web_port: 443
+
+# Services VM
+services_ssh_port: 2223
+argocd_port: 8080
+argocd_repo_port: 8081
+argocd_controller_port: 8082
+ipxe_port: 8083
+controld_port: 8084
+dhcp_port: 67
+
+# Network Services
+dns_port: 53
+ntp_port: 123 

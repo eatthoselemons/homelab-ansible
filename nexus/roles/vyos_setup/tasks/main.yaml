@@ -1,0 +1,57 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - python3-libvirt
+    state: present
+    update_cache: yes
+
+- name: Start and enable libvirtd
+  systemd:
+    name: libvirtd
+    state: started
+    enabled: yes
+
+- name: Create libvirt network configuration for WAN
+  community.libvirt.virt_net:
+    name: wan
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'wan_network.xml.j2') }}"
+
+- name: Create libvirt network configuration for LAN
+  community.libvirt.virt_net:
+    name: lan
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'lan_network.xml.j2') }}"
+
+- name: Start WAN network
+  community.libvirt.virt_net:
+    name: wan
+    state: active
+
+- name: Start LAN network
+  community.libvirt.virt_net:
+    name: lan
+    state: active
+
+- name: Create VyOS disk image
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'vyos_disk.xml.j2') }}"
+
+- name: Create VyOS VM
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
+    autostart: yes
+
+- name: Start VyOS VM
+  community.libvirt.virt:
+    name: "{{ vyos_vm.name }}"
+    state: running 
