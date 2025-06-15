@@ -1,7 +1,7 @@
 ---
-- name: restart fail2ban
+- name: restart sshd
   service:
-    name: fail2ban
+    name: sshd
     state: restarted
 
 - name: restart auditd
@@ -9,7 +9,7 @@
     name: auditd
     state: restarted
 
-- name: restart sshd
+- name: restart ufw
   service:
-    name: sshd
+    name: ufw
     state: restarted 

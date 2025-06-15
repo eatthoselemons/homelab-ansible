@@ -3,7 +3,6 @@
   apt:
     name:
       - ufw
-      - fail2ban
       - auditd
       - logrotate
     state: present
@@ -20,15 +19,6 @@
   ufw:
     state: enabled
     policy: deny
-
-- name: Configure fail2ban
-  template:
-    src: fail2ban.j2
-    dest: /etc/fail2ban/jail.local
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart fail2ban
 
 - name: Configure audit rules
   template:
@@ -60,4 +50,13 @@
     owner: root
     group: root
     mode: '0600'
-  notify: restart sshd 
+  notify: restart sshd
+
+- name: Include audit setup
+  ansible.builtin.import_tasks: audit.yaml
+
+- name: Include SSH hardening
+  ansible.builtin.import_tasks: ssh.yaml
+
+- name: Include system hardening
+  ansible.builtin.import_tasks: system.yaml 
