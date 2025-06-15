@@ -1,0 +1,54 @@
+---
+- name: Verify Security Hardening
+  hosts: all
+  tasks:
+    - name: Verify SSH configuration
+      block:
+        - name: Check SSH configuration
+          ansible.builtin.command: sshd -t
+          register: sshd_check
+          changed_when: false
+          failed_when: sshd_check.rc != 0
+
+        - name: Verify SSH settings
+          ansible.builtin.command: grep -E '^PermitRootLogin|^PasswordAuthentication|^PubkeyAuthentication' /etc/ssh/sshd_config
+          register: ssh_config
+          changed_when: false
+          failed_when: >
+            'PermitRootLogin no' not in ssh_config.stdout or
+            'PasswordAuthentication no' not in ssh_config.stdout or
+            'PubkeyAuthentication yes' not in ssh_config.stdout
+
+    - name: Verify audit configuration
+      block:
+        - name: Verify auditd is running
+          ansible.builtin.service_facts:
+          ansible.builtin.assert:
+            that:
+              - "'auditd' in ansible_facts.services"
+              - "ansible_facts.services['auditd'].status == 'running'"
+
+        - name: Verify audit rules
+          ansible.builtin.command: auditctl -l
+          register: audit_rules
+          changed_when: false
+          failed_when: >
+            'system_auth_changes' not in audit_rules.stdout or
+            'host_vm_config_changes' not in audit_rules.stdout
+
+    - name: Verify UFW configuration
+      block:
+        - name: Verify UFW is active
+          ansible.builtin.command: ufw status
+          register: ufw_status
+          changed_when: false
+          failed_when: 'Status: active' not in ufw_status.stdout
+
+        - name: Verify UFW rules
+          ansible.builtin.command: ufw status verbose
+          register: ufw_rules
+          changed_when: false
+          failed_when: >
+            '22/tcp' not in ufw_rules.stdout or
+            '80/tcp' not in ufw_rules.stdout or
+            '443/tcp' not in ufw_rules.stdout 
