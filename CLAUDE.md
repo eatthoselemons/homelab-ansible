@@ -30,43 +30,87 @@ source ~/ansible-venv/bin/activate
 
 ### Running Playbooks
 ```bash
+# Set required environment variables
+export ANSIBLE_USER=<your-ssh-user>
 export INFISICAL_CLIENT_SECRET=<secret>
-ansible-playbook -u user router/default.yaml
+
+# Setup Nexus node (primary workload)
+ansible-playbook nexus/setup-nexus.yaml
 
 # Setup VyOS router system
+# Alternative site playbook for role-based execution
+ansible-playbook nexus/site.yml --tags="system,security"
+
+# Legacy VyOS setup
 ansible-playbook vyos/setup-base-system.yaml
 ```
 
-### Inventory and Configuration
-- `server-inventory.yaml`: Defines host groups (upspi, fast-host, router)
-- `ansible.cfg`: Sets default inventory and Python interpreter
-- `versions/router.json`: Version pinning for specific packages
+### Testing with Molecule
+```bash
+# Test individual roles
+cd nexus/
+molecule test -s security_hardening
+molecule test -s vyos_setup
+molecule test -s services_vm_setup
+```
+
+## Inventory Structure
+
+- `ansible.cfg`: Updated configuration with role paths and Galaxy settings
+- `server-inventory.yaml`: Legacy inventory for simple host definitions
+- `inventory.yml`: Modern YAML inventory with detailed nexus configuration
+- `nexus/vars/ports.yaml`: Service port mappings for VM configurations
 
 ## Secret Management
 
-All sensitive data (API keys, passwords) is managed through Infisical:
-- Cloud bootstrap for initial setup
-- Self-hosted instance post-deployment
-- Router playbooks require `INFISICAL_CLIENT_SECRET` environment variable
-- API keys retrieved dynamically from Infisical vault during playbook execution
+All sensitive data managed through Infisical with dynamic retrieval:
+- SSH keys retrieved from Infisical vault
+- System passwords from secret store
+- API credentials for service integrations
+- Environment variables: `INFISICAL_CLIENT_SECRET` required
+
+## Nexus Node Components
+
+### VyOS Router VM
+- 4GB RAM, 2 vCPUs, 20GB disk
+- WAN interface on `enp1s0f0`, LAN on `enp1s0f1`
+- Security: Fail2ban, audit logging, firewall rules
+- SSH on port 2222, web interface on 443
+
+### Services VM
+- 4GB RAM, 2 vCPUs, 40GB disk
+- Internal services: ArgoCD (8080), iPXE (8083), Control-D DNS (8084), DHCP (67)
+- Handles network boot and GitOps deployment
+- SSH on port 2223
+
+### Security Hardening
+- UFW firewall with restrictive policies
+- Auditd for system monitoring
+- Automated security updates via unattended-upgrades
+- SSH hardening and fail2ban protection
+- System-wide security policies
 
 ## Development Workflow
 
-1. Edit playbooks in respective directories (`router/`, `vyos/`)
-2. Update inventory hosts in `server-inventory.yaml` as needed
-3. Pin package versions in `versions/router.json` for reproducible builds
-4. Test playbooks against development environment before production
+1. Edit roles in `nexus/roles/` directory structure
+2. Update inventory in `inventory.yml` for nexus configurations
+3. Test with Molecule before deployment
+4. Use tags for selective role execution
+5. Version constraints in `versions/` directory
 
 ## Key Integration Points
 
-- **VyOS**: VM provisioning through LibVirt with custom XML templates
 - **LibVirt**: VM lifecycle management, networking bridges, storage volumes
 - **Infisical**: Dynamic secret retrieval for API authentication
-- **systemd-networkd**: Network configuration through ansible_systemd role
+- **LibVirt**: VM lifecycle through custom XML templates
+- **Infisical Vault**: Dynamic secret retrieval during playbook execution  
+- **GitOps**: ArgoCD for infrastructure deployment automation
 
 ## File Structure Context
 
-- `bootstrap-*.sh`: System and Ansible environment setup scripts
-- `vyos/`: VyOS router VM provisioning and configuration
-- `docs/`: Project documentation and AI prompts
-- `versions/`: Package version constraints for reproducible deployments
+- `nexus/`: Main deployment directory with roles, playbooks, and tests
+- `nexus/roles/`: Modular components (system_setup, security_hardening, vyos_setup, services_vm_setup)
+- `nexus/molecule/`: Testing scenarios for roles
+- `bootstrap-*.sh`: Environment setup scripts
+- `versions/`: Package version pinning
+- `docs/`: Architecture documentation and prompts
