@@ -37,7 +37,6 @@ export INFISICAL_CLIENT_SECRET=<secret>
 # Setup Nexus node (primary workload)
 ansible-playbook nexus/setup-nexus.yaml
 
-# Setup VyOS router system
 # Alternative site playbook for role-based execution
 ansible-playbook nexus/site.yml --tags="system,security"
 
@@ -100,10 +99,10 @@ All sensitive data managed through Infisical with dynamic retrieval:
 
 ## Key Integration Points
 
-- **LibVirt**: VM lifecycle management, networking bridges, storage volumes
-- **Infisical**: Dynamic secret retrieval for API authentication
 - **LibVirt**: VM lifecycle through custom XML templates
+- **Network Bridges**: OVS for VM networking isolation
 - **Infisical Vault**: Dynamic secret retrieval during playbook execution  
+- **Security Auditing**: Comprehensive logging and monitoring
 - **GitOps**: ArgoCD for infrastructure deployment automation
 
 ## File Structure Context
