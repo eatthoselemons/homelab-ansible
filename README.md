@@ -1,10 +1,4 @@
-# Setup Router
-### Get Opnsense Api Keys
-
-You need the keys from Opnsense, to do that follow the instructions here in opnsenses (documentation)[https://docs.opnsense.org/development/how-tos/api.html#creating-keys]
-
-**NOTE**: It downloads a file you need BOTH the `key` and `secret`
-
+## Setup Router
 ### Put in Infisical
 
 You then need to put the `key` and `secret` into infisical, to do that follow this documentation for adding the keys to a new project (infisical documentation)[https://infisical.com/docs/documentation/platform/project]
@@ -22,6 +16,7 @@ You then need to run `bootstrap-system.sh $HOME` as `sudo` which will install th
 
 Once that finishes you need to run `source ~/ansible-venv/bin/activate` to enter the python venv and you can then push the changes to the router with `ansible-playbook -u user router/default.yaml`
 
+### Running Tests
 
 ### Done
 

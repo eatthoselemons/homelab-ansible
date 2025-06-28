@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a homelab infrastructure automation project using Ansible to manage network equipment, VyOS, virtual routers, and server provisioning. The architecture includes VM orchestration, container management, and GitOps deployment.
+This is a homelab infrastructure automation project using Ansible to manage network equipment, VyOS virtual routers, and server provisioning. The architecture includes VM orchestration, container management, and GitOps deployment with the Nexus node as the central management hub.
 
 ## Core Architecture
 
