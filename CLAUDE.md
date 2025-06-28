@@ -30,6 +30,9 @@ source ~/ansible-venv/bin/activate
 
 ### Running Playbooks
 ```bash
+# Activate virtual environment first
+source ~/ansible-venv/bin/activate
+
 # Set required environment variables
 export ANSIBLE_USER=<your-ssh-user>
 export INFISICAL_CLIENT_SECRET=<secret>
@@ -46,8 +49,11 @@ ansible-playbook vyos/setup-base-system.yaml
 
 ### Testing with Molecule
 ```bash
-# Test individual roles
-cd nexus/
+# Activate virtual environment first
+source ~/ansible-venv/bin/activate
+
+# Test individual roles from collection extensions directory
+cd nexus/ansible_collections/homelab/infrastructure/extensions/
 molecule test -s security_hardening
 molecule test -s vyos_setup
 molecule test -s services_vm_setup
@@ -109,7 +115,7 @@ All sensitive data managed through Infisical with dynamic retrieval:
 
 - `nexus/`: Main deployment directory with roles, playbooks, and tests
 - `nexus/roles/`: Modular components (system_setup, security_hardening, vyos_setup, services_vm_setup)
-- `nexus/molecule/`: Testing scenarios for roles
+- `nexus/ansible_collections/homelab/infrastructure/extensions/molecule/`: Testing scenarios for roles
 - `bootstrap-*.sh`: Environment setup scripts
 - `versions/`: Package version pinning
 - `docs/`: Architecture documentation and prompts

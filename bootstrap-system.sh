@@ -6,8 +6,8 @@ trap "${trap_msg}" ERR
 virtualEnvPath=$1/ansible-venv
 
 # Install packages needed on a base Debian system
-apt update
-apt --yes install  --no-install-recommends $(
+sudo apt update
+sudo apt --yes install  --no-install-recommends $(
 echo "build-essential
       python3-httpx
       python3-dev
