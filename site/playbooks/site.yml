@@ -3,14 +3,14 @@
   hosts: nexus
   become: true
   roles:
-    - role: system_setup
+    - role: homelab.nexus.system_setup
       tags: [system, always]
     
-    - role: security_hardening
+    - role: homelab.nexus.security_hardening
       tags: [security, always]
     
-    - role: vyos_setup
+    - role: homelab.nexus.vyos_setup
       tags: [vyos]
     
-    - role: services_vm_setup
+    - role: homelab.nexus.services_vm_setup
       tags: [services] 

@@ -42,10 +42,10 @@
       disk_path: /var/lib/libvirt/images/nexus-services.qcow2
 
   roles:
-    - role: security_hardening
-    - role: vyos_setup
-    - role: services_vm_setup
-    - role: system_setup
+    - role: homelab.nexus.security_hardening
+    - role: homelab.nexus.vyos_setup
+    - role: homelab.nexus.services_vm_setup
+    - role: homelab.nexus.system_setup
 
   tasks:
     - name: Include version information

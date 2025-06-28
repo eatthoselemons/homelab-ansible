@@ -1,0 +1,28 @@
+namespace: homelab
+name: nexus
+version: 1.0.0
+description: Homelab Nexus infrastructure automation collection for VyOS routing, security hardening, and VM management
+authors:
+  - homelab team
+repository: https://github.com/homelab/homelab-ansible
+documentation: https://github.com/homelab/homelab-ansible
+homepage: https://github.com/homelab/homelab-ansible
+issues: https://github.com/homelab/homelab-ansible/issues
+license:
+  - MIT
+tags:
+  - infrastructure
+  - homelab
+  - vyos
+  - security
+  - virtualization
+  - libvirt
+build_ignore:
+  - "*.tar.gz"
+  - ".git"
+  - ".gitignore"
+  - "molecule"
+dependencies:
+  community.general: ">=1.0.0"
+  community.libvirt: ">=1.0.0"
+  community.docker: ">=3.10.4"

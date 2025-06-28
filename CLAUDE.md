@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a homelab infrastructure automation project using Ansible to manage network equipment, VyOS virtual routers, and server provisioning. The architecture includes VM orchestration, container management, and GitOps deployment with the Nexus node as the central management hub.
+This is a homelab infrastructure automation project using Ansible to manage network equipment, VyOS virtual routers, and server provisioning. The project is structured as two main sections:
+
+1. **Reusable Collection** (`collections/`): The `homelab.nexus` Ansible collection containing reusable roles and playbooks
+2. **Site Implementation** (`site/`): Site-specific inventory, playbooks, and configurations that use the collection
+
+The architecture includes VM orchestration, container management, and GitOps deployment with the Nexus node as the central management hub.
 
 ## Core Architecture
 
@@ -33,18 +38,21 @@ source ~/ansible-venv/bin/activate
 # Activate virtual environment first
 source ~/ansible-venv/bin/activate
 
+# Navigate to site directory
+cd site/
+
+# Install collection dependencies
+ansible-galaxy install -r requirements.yml
+
 # Set required environment variables
 export ANSIBLE_USER=<your-ssh-user>
 export INFISICAL_CLIENT_SECRET=<secret>
 
 # Setup Nexus node (primary workload)
-ansible-playbook nexus/setup-nexus.yaml
+ansible-playbook playbooks/setup-nexus.yaml
 
 # Alternative site playbook for role-based execution
-ansible-playbook nexus/site.yml --tags="system,security"
-
-# Legacy VyOS setup
-ansible-playbook vyos/setup-base-system.yaml
+ansible-playbook playbooks/site.yml --tags="system,security"
 ```
 
 ### Testing with Molecule
@@ -53,18 +61,26 @@ ansible-playbook vyos/setup-base-system.yaml
 source ~/ansible-venv/bin/activate
 
 # Test individual roles from collection extensions directory
-cd nexus/ansible_collections/homelab/infrastructure/extensions/
+cd collections/ansible_collections/homelab/nexus/extensions/
 molecule test -s security_hardening
 molecule test -s vyos_setup
 molecule test -s services_vm_setup
 ```
 
-## Inventory Structure
+## Repository Structure
 
-- `ansible.cfg`: Updated configuration with role paths and Galaxy settings
-- `server-inventory.yaml`: Legacy inventory for simple host definitions
-- `inventory.yml`: Modern YAML inventory with detailed nexus configuration
-- `nexus/vars/ports.yaml`: Service port mappings for VM configurations
+### Collection Structure (`collections/ansible_collections/homelab/nexus/`)
+- `roles/`: Reusable roles (system_setup, security_hardening, vyos_setup, services_vm_setup, argocd_setup)
+- `vars/`: Default variables including service port mappings
+- `extensions/molecule/`: Testing scenarios for all roles
+- `galaxy.yml`: Collection metadata and dependencies
+
+### Site Structure (`site/`)
+- `inventory.yml`: Site-specific inventory with nexus host configuration
+- `ansible.cfg`: Site-specific Ansible configuration pointing to collection
+- `playbooks/`: Site-specific playbooks using homelab.nexus collection
+- `requirements.yml`: Collection dependencies
+- `group_vars/` & `host_vars/`: Variable overrides for site-specific configurations
 
 ## Secret Management
 
@@ -97,11 +113,11 @@ All sensitive data managed through Infisical with dynamic retrieval:
 
 ## Development Workflow
 
-1. Edit roles in `nexus/roles/` directory structure
-2. Update inventory in `inventory.yml` for nexus configurations
-3. Test with Molecule before deployment
-4. Use tags for selective role execution
-5. Version constraints in `versions/` directory
+1. **Collection Development**: Edit roles in `collections/ansible_collections/homelab/nexus/roles/`
+2. **Testing**: Test roles using molecule from `collections/ansible_collections/homelab/nexus/extensions/`
+3. **Site Configuration**: Update `site/inventory.yml` and variable overrides for specific deployments
+4. **Deployment**: Run playbooks from `site/` directory using collection syntax
+5. **Collection Distribution**: Package and distribute collection using `ansible-galaxy collection build`
 
 ## Key Integration Points
 
@@ -113,9 +129,11 @@ All sensitive data managed through Infisical with dynamic retrieval:
 
 ## File Structure Context
 
-- `nexus/`: Main deployment directory with roles, playbooks, and tests
-- `nexus/roles/`: Modular components (system_setup, security_hardening, vyos_setup, services_vm_setup)
-- `nexus/ansible_collections/homelab/infrastructure/extensions/molecule/`: Testing scenarios for roles
+- `collections/`: Ansible collections for reusable infrastructure components
+- `site/`: Site-specific implementation using the homelab.nexus collection
 - `bootstrap-*.sh`: Environment setup scripts
 - `versions/`: Package version pinning
 - `docs/`: Architecture documentation and prompts
+
+## Extra instructions
+- If you get a file/directory not found error use `pwd` to check your current location
