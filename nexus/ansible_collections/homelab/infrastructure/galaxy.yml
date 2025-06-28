@@ -1,0 +1,15 @@
+namespace: homelab
+name: infrastructure
+version: 1.0.0
+description: Homelab infrastructure automation collection
+authors:
+  - homelab team
+repository: https://github.com/homelab/infrastructure
+documentation: https://github.com/homelab/infrastructure
+homepage: https://github.com/homelab/infrastructure
+issues: https://github.com/homelab/infrastructure/issues
+build_ignore:
+  - "*.tar.gz"
+  - ".git"
+  - ".gitignore"
+dependencies: {}

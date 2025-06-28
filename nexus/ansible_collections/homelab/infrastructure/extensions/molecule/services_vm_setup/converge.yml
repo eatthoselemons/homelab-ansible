@@ -1,0 +1,26 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - libvirt-daemon-system
+          - qemu-kvm
+          - libvirt-clients
+          - bridge-utils
+          - virtinst
+        state: present
+        update_cache: true
+
+    - name: Start and enable libvirt
+      ansible.builtin.systemd:
+        name: libvirtd
+        state: started
+        enabled: true
+
+    - name: Include services VM setup role
+      ansible.builtin.include_role:
+        name: homelab.infrastructure.services_vm_setup 

@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - auditd
+          - ufw
+        state: present
+        update_cache: true
+
+    - name: Include security hardening role
+      ansible.builtin.include_role:
+        name: homelab.infrastructure.security_hardening 

@@ -1,0 +1,16 @@
+---
+- name: Create services VM disk image
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'services_disk.xml.j2') }}"
+
+- name: Create services VM
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'services_vm.xml.j2') }}"
+    autostart: yes
+
+- name: Start services VM
+  community.libvirt.virt:
+    name: "{{ services_vm.name }}"
+    state: running 

@@ -1,0 +1,44 @@
+---
+- name: Verify VyOS Setup
+  hosts: all
+  tasks:
+    - name: Verify VyOS VM
+      block:
+        - name: Check VyOS VM exists
+          ansible.builtin.command: virsh list --all
+          register: vm_list
+          changed_when: false
+          failed_when: 'vyos-router' not in vm_list.stdout
+
+        - name: Verify VyOS VM configuration
+          ansible.builtin.command: virsh dumpxml vyos-router
+          register: vm_config
+          changed_when: false
+          failed_when: >
+            '<memory unit="KiB">1048576</memory>' not in vm_config.stdout or
+            '<vcpu>2</vcpu>' not in vm_config.stdout
+
+    - name: Verify VyOS networking
+      block:
+        - name: Check VyOS network exists
+          ansible.builtin.command: virsh net-list --all
+          register: net_list
+          changed_when: false
+          failed_when: 'vyos-net' not in net_list.stdout
+
+        - name: Verify VyOS network configuration
+          ansible.builtin.command: virsh net-dumpxml vyos-net
+          register: net_config
+          changed_when: false
+          failed_when: >
+            '<ip address="192.168.122.1" netmask="255.255.255.0">' not in net_config.stdout
+
+    - name: Verify VyOS security
+      block:
+        - name: Check fail2ban configuration
+          ansible.builtin.command: virsh console vyos-router --force
+          register: console_output
+          changed_when: false
+          failed_when: >
+            'fail2ban' not in console_output.stdout or
+            'vyos-web' not in console_output.stdout 
