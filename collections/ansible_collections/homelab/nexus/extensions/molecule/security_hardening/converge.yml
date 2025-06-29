@@ -2,6 +2,11 @@
 - name: Converge
   hosts: all
   tasks:
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
     - name: Install required packages
       ansible.builtin.apt:
         name:
@@ -9,9 +14,9 @@
           - python3-pip
           - auditd
           - ufw
+          - systemd
         state: present
-        update_cache: true
 
     - name: Include security hardening role
       ansible.builtin.include_role:
-        name: homelab.infrastructure.security_hardening 
+        name: homelab.nexus.security_hardening 

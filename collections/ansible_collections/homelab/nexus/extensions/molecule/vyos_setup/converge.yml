@@ -2,6 +2,11 @@
 - name: Converge
   hosts: all
   tasks:
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
     - name: Install required packages
       ansible.builtin.apt:
         name:
@@ -12,8 +17,8 @@
           - libvirt-clients
           - bridge-utils
           - virtinst
+          - systemd
         state: present
-        update_cache: true
 
     - name: Start and enable libvirt
       ansible.builtin.systemd:
@@ -23,4 +28,4 @@
 
     - name: Include VyOS setup role
       ansible.builtin.include_role:
-        name: homelab.infrastructure.vyos_setup 
+        name: homelab.nexus.vyos_setup 

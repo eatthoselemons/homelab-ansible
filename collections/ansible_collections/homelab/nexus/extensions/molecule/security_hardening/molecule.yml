@@ -7,7 +7,7 @@ driver:
   name: docker
 platforms:
   - name: security-test
-    image: debian:bullseye-slim
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
     pre_build_image: true
     command: ""
     volumes:
@@ -21,9 +21,12 @@ provisioner:
     defaults:
       callback_whitelist: profile_tasks
       retry_files_enabled: false
+      host_key_checking: false
+      remote_tmp: /tmp/.ansible
   inventory:
     group_vars:
       all:
         ansible_python_interpreter: /usr/bin/python3
+        ansible_connection: community.docker.docker
 verifier:
   name: ansible 

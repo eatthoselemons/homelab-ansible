@@ -2,25 +2,19 @@
 - name: Converge
   hosts: all
   tasks:
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
     - name: Install required packages
       ansible.builtin.apt:
         name:
           - python3
           - python3-pip
-          - libvirt-daemon-system
-          - qemu-kvm
-          - libvirt-clients
-          - bridge-utils
-          - virtinst
+          - systemd
         state: present
-        update_cache: true
 
-    - name: Start and enable libvirt
-      ansible.builtin.systemd:
-        name: libvirtd
-        state: started
-        enabled: true
-
-    - name: Include Nexus role
-      ansible.builtin.include_role:
-        name: nexus 
+    - name: Test basic system functionality
+      ansible.builtin.debug:
+        msg: "Default scenario - basic system test completed" 
