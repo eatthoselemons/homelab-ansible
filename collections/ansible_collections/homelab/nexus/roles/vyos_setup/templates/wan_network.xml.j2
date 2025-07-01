@@ -1,8 +1,18 @@
 <network>
   <name>wan</name>
+  {% if vyos_network_mode | default('bridge') == 'nat' %}
+  <forward mode="nat"/>
+  <bridge name="virbr-wan" stp="on" delay="0"/>
+  <ip address="192.168.100.1" netmask="255.255.255.0">
+    <dhcp>
+      <range start="192.168.100.2" end="192.168.100.254"/>
+    </dhcp>
+  </ip>
+  {% else %}
   <forward mode="bridge"/>
   <bridge name="virbr-wan"/>
   <portgroup name="wan">
     <virtualport type="openvswitch"/>
   </portgroup>
+  {% endif %}
 </network> 

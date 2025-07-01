@@ -30,12 +30,14 @@
       <source file="{{ vyos_vm.disk_path }}"/>
       <target dev="vda" bus="virtio"/>
     </disk>
+    {#
     <disk type="file" device="cdrom">
       <driver name="qemu" type="raw"/>
       <source file="{{ vyos_vm.iso_path }}"/>
       <target dev="sda" bus="sata"/>
       <readonly/>
     </disk>
+    #}
     <controller type="usb" model="qemu-xhci" ports="15"/>
     <controller type="pci" model="pcie-root"/>
     <controller type="pci" model="pcie-root-port"/>

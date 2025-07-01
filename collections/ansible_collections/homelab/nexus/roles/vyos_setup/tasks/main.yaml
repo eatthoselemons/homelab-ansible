@@ -16,6 +16,31 @@
     state: started
     enabled: yes
 
+- name: Ensure libvirt images directory exists
+  file:
+    path: /var/lib/libvirt/images
+    state: directory
+    owner: libvirt-qemu
+    group: kvm
+    mode: '0755'
+
+- name: Create VyOS disk image
+  include_role:
+    name: stafwag.qemu_img
+  vars:
+    qemu_img:
+      dest: "{{ vyos_vm.disk_path }}"
+      size: "{{ vyos_vm.disk_size | default('20G') }}"
+      format: qcow2
+      overwrite: true
+
+- name: Fix disk image ownership for libvirt
+  file:
+    path: "{{ vyos_vm.disk_path }}"
+    owner: libvirt-qemu
+    group: kvm
+    mode: '0644'
+
 - name: Create libvirt network configuration for WAN
   community.libvirt.virt_net:
     name: wan
@@ -40,10 +65,6 @@
     name: lan
     state: active
 
-- name: Create VyOS disk image
-  community.libvirt.virt:
-    command: define
-    xml: "{{ lookup('template', 'vyos_disk.xml.j2') }}"
 
 - name: Create VyOS VM
   community.libvirt.virt:

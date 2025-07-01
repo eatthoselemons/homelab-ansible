@@ -2,6 +2,9 @@
 - name: Converge
   hosts: all
   tasks:
+    - name: Replace this task with one that validates your content
+      ansible.builtin.debug:
+        msg: "This is the effective test"
     - name: Update package cache
       ansible.builtin.apt:
         update_cache: true
@@ -12,6 +15,7 @@
         name:
           - python3
           - python3-pip
+          - python3-lxml
           - libvirt-daemon-system
           - qemu-kvm
           - libvirt-clients
@@ -28,4 +32,12 @@
 
     - name: Include VyOS setup role
       ansible.builtin.include_role:
-        name: homelab.nexus.vyos_setup 
+        name: ../../../roles/vyos_setup
+      vars:
+        vyos_network_mode: nat
+        vyos_vm:
+          name: vyos-router
+          memory: 1024
+          vcpus: 2
+          disk_path: /var/lib/libvirt/images/vyos-router.qcow2
+          disk_size: 10G 

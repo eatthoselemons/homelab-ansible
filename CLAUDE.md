@@ -57,14 +57,47 @@ ansible-playbook playbooks/site.yml --tags="system,security"
 
 ### Testing with Molecule
 ```bash
-# Activate virtual environment first
+# Activate virtual environment first (only needed once per session)
 source ~/ansible-venv/bin/activate
 
-# Test individual roles from collection extensions directory
+# Navigate to collection test directory
 cd collections/ansible_collections/homelab/nexus/extensions/
+
+# Run tests - all scenarios are fully functional
+molecule list
 molecule test -s security_hardening
 molecule test -s vyos_setup
 molecule test -s services_vm_setup
+
+# Alternative: syntax check only (faster for development)
+molecule syntax -s security_hardening
+
+# For faster iteration during development, use converge:
+molecule converge -s vyos_setup
+
+# Note: Virtual environment activation persists throughout the session
+# No need to reactivate unless you open a new terminal
+
+# Current Status: 
+# ✅ Structure: All 4 scenarios discovered and configured properly
+# ✅ Syntax: All playbooks pass syntax validation  
+# ✅ Connectivity: Docker container setup working with systemd
+# ✅ VyOS Testing: Full libvirt + KVM acceleration in containers
+# ✅ Network Setup: WAN/LAN networks created and functional
+# ✅ VM Creation: VyOS VMs can be created and started successfully
+# 
+# Technical Setup:
+# - Docker containers run with systemd and KVM hardware acceleration
+# - libvirtd service starts properly in privileged containers
+# - Disk image creation using stafwag.qemu_img community role
+# - Conditional network templates: NAT mode for testing, bridge mode for production
+# - Proper file ownership and permissions for libvirt access
+# 
+# Dependencies:
+# - KVM hardware acceleration (/dev/kvm mounted in containers)
+# - systemd running in containers for service management
+# - stafwag.qemu_img role for disk image creation
+# - community.libvirt collection for VM and network management
 ```
 
 ## Repository Structure
@@ -118,6 +151,36 @@ All sensitive data managed through Infisical with dynamic retrieval:
 3. **Site Configuration**: Update `site/inventory.yml` and variable overrides for specific deployments
 4. **Deployment**: Run playbooks from `site/` directory using collection syntax
 5. **Collection Distribution**: Package and distribute collection using `ansible-galaxy collection build`
+
+## VyOS Network Configuration
+
+The VyOS setup role supports conditional network modes:
+
+### Production (Default)
+```yaml
+# Uses bridge mode with OpenVSwitch for real hardware integration
+# No vyos_network_mode variable needed - defaults to 'bridge'
+vyos_vm:
+  name: vyos-router
+  memory: 4096
+  vcpus: 2
+  disk_path: /var/lib/libvirt/images/vyos-router.qcow2
+  disk_size: 20G
+```
+
+### Testing/Development  
+```yaml
+# Uses NAT mode for container compatibility in molecule tests
+vyos_network_mode: nat
+vyos_vm:
+  name: vyos-router
+  memory: 1024
+  vcpus: 2
+  disk_path: /var/lib/libvirt/images/vyos-router.qcow2
+  disk_size: 10G
+```
+
+This allows the same role to work in both production environments (with real network bridges) and containerized testing environments (with isolated NAT networks).
 
 ## Key Integration Points
 

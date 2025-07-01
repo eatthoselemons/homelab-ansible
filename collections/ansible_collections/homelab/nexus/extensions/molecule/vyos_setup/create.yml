@@ -3,7 +3,6 @@
   hosts: localhost
   connection: local
   gather_facts: false
-  no_log: "{{ molecule_no_log }}"
   tasks:
     - name: Create docker containers
       community.docker.docker_container:
@@ -13,9 +12,10 @@
         recreate: false
         log_driver: json-file
         command: "{{ item.command | default('sleep 1d') }}"
-        privileged: "{{ item.privileged | default(omit) }}"
+        privileged: true
         volumes: "{{ item.volumes | default(omit) }}"
         capabilities: "{{ item.capabilities | default(omit) }}"
+        cgroupns_mode: "{{ item.cgroupns_mode | default(omit) }}"
         exposed_ports: "{{ item.exposed_ports | default(omit) }}"
         published_ports: "{{ item.published_ports | default(omit) }}"
         ulimits: "{{ item.ulimits | default(omit) }}"
