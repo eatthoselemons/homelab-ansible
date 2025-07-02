@@ -1,0 +1,11 @@
+---
+- name: restart argocd
+  community.docker.docker_compose:
+    project_src: /opt/services
+    services:
+      - argocd-server
+      - argocd-repo-server  
+      - argocd-application-controller
+    state: present
+    pull: true
+    force_restart: true

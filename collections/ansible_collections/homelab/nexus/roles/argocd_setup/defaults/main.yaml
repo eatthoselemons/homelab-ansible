@@ -1,0 +1,77 @@
+---
+# ArgoCD Configuration
+argocd_config_dir: /opt/services/argocd
+argocd_data_dir: /opt/services/argocd/data
+argocd_server_url: "http://{{ ansible_default_ipv4.address | default('localhost') }}:{{ argocd_port | default(8080) }}"
+argocd_admin_password: "{{ lookup('password', '/tmp/argocd_admin_password length=32') }}"
+
+# Repository Configuration
+argocd_repositories:
+  - name: homelab-infrastructure
+    url: "https://github.com/yourusername/homelab-infrastructure.git"
+    type: git
+    insecure: false
+  - name: homelab-applications
+    url: "https://github.com/yourusername/homelab-applications.git"
+    type: git
+    insecure: false
+
+# Project Configuration
+argocd_projects:
+  - name: homelab
+    description: "Homelab Infrastructure Project"
+    source_repos:
+      - "https://github.com/yourusername/homelab-infrastructure.git"
+      - "https://github.com/yourusername/homelab-applications.git"
+    destinations:
+      - namespace: "*"
+        server: "https://kubernetes.default.svc"
+  - name: infrastructure
+    description: "Core Infrastructure Components"
+    source_repos:
+      - "https://github.com/yourusername/homelab-infrastructure.git"
+    destinations:
+      - namespace: "kube-system"
+        server: "https://kubernetes.default.svc"
+      - namespace: "argocd"
+        server: "https://kubernetes.default.svc"
+
+# Application Configuration
+argocd_applications:
+  - name: homelab-infrastructure
+    project: infrastructure
+    repo_url: "https://github.com/yourusername/homelab-infrastructure.git"
+    path: "k8s/infrastructure"
+    dest_server: "https://kubernetes.default.svc"
+    dest_namespace: "kube-system"
+    sync_policy: "automated"
+  - name: network-services
+    project: homelab
+    repo_url: "https://github.com/yourusername/homelab-applications.git"
+    path: "k8s/network"
+    dest_server: "https://kubernetes.default.svc"
+    dest_namespace: "network"
+    sync_policy: "manual"
+  - name: monitoring-stack
+    project: homelab
+    repo_url: "https://github.com/yourusername/homelab-applications.git"
+    path: "k8s/monitoring"
+    dest_server: "https://kubernetes.default.svc"
+    dest_namespace: "monitoring"
+    sync_policy: "automated"
+
+# ArgoCD Server Configuration
+argocd_server_config:
+  url: "{{ argocd_server_url }}"
+  insecure: true
+  grpc_web: true
+  disable_auth: false
+
+# RBAC Configuration
+argocd_rbac_enabled: true
+argocd_rbac_default_policy: "role:readonly"
+argocd_rbac_policy: |
+  p, role:admin, applications, *, */*, allow
+  p, role:admin, clusters, *, *, allow
+  p, role:admin, repositories, *, *, allow
+  g, argocd-admins, role:admin

@@ -1,0 +1,33 @@
+---
+- name: Create docker-compose file for services
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/services/docker-compose.yml
+    mode: '0644'
+  notify: restart services
+
+- name: Create service configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: '0644'
+  loop:
+    - src: ipxe-config.j2
+      dest: /opt/services/ipxe/config.yaml
+    - src: controld-config.j2
+      dest: /opt/services/dns/controld.conf
+  notify: restart services
+
+- name: Start services with Docker Compose
+  community.docker.docker_compose:
+    project_src: /opt/services
+    state: present
+    pull: true
+
+- name: Enable services to start on boot
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - docker

@@ -75,4 +75,12 @@
 - name: Start VyOS VM
   community.libvirt.virt:
     name: "{{ vyos_vm.name }}"
-    state: running 
+    state: running
+
+- name: Include VLAN network setup
+  ansible.builtin.include_tasks: vlan_setup.yaml
+  when: vyos_enable_vlans | default(true)
+
+- name: Include VyOS configuration
+  ansible.builtin.include_tasks: vyos_config.yaml
+  when: vyos_configure_router | default(true) 

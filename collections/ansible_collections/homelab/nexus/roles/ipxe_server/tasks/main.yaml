@@ -1,0 +1,67 @@
+---
+- name: Create iPXE directory structure
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ ipxe_root_dir }}"
+    - "{{ ipxe_root_dir }}/boot"
+    - "{{ ipxe_root_dir }}/configs"
+    - "{{ ipxe_root_dir }}/images"
+    - "{{ ipxe_root_dir }}/kernels"
+    - "{{ ipxe_root_dir }}/initrd"
+
+- name: Create iPXE boot menu
+  ansible.builtin.template:
+    src: boot.ipxe.j2
+    dest: "{{ ipxe_root_dir }}/boot.ipxe"
+    mode: '0644'
+
+- name: Create iPXE configuration files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ ipxe_root_dir }}/configs/{{ item.dest }}"
+    mode: '0644'
+  loop:
+    - src: ubuntu-server.ipxe.j2
+      dest: ubuntu-server.ipxe
+    - src: vyos.ipxe.j2
+      dest: vyos.ipxe
+    - src: memtest.ipxe.j2
+      dest: memtest.ipxe
+
+- name: Create nginx configuration for iPXE server
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ ipxe_root_dir }}/nginx.conf"
+    mode: '0644'
+  notify: restart ipxe server
+
+- name: Create iPXE HTML interface
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ ipxe_root_dir }}/index.html"
+    mode: '0644'
+
+- name: Download common boot images
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "{{ ipxe_root_dir }}/images/{{ item.name }}"
+    mode: '0644'
+  loop: "{{ ipxe_boot_images }}"
+  when: ipxe_download_images | default(false)
+
+- name: Set up TFTP configuration
+  ansible.builtin.template:
+    src: dnsmasq-tftp.conf.j2
+    dest: /opt/services/ipxe/dnsmasq-tftp.conf
+    mode: '0644'
+  when: ipxe_enable_tftp | default(true)
+
+- name: Configure PXE boot integration
+  ansible.builtin.template:
+    src: pxelinux.cfg.j2
+    dest: "{{ ipxe_root_dir }}/pxelinux.cfg/default"
+    mode: '0644'
+  when: ipxe_enable_pxe | default(true)

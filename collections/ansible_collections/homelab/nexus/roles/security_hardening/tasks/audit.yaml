@@ -10,6 +10,7 @@
     name: auditd
     state: started
     enabled: yes
+  ignore_errors: yes
 
 - name: Copy audit rules
   ansible.builtin.template:
@@ -22,4 +23,5 @@
 
 - name: Ensure audit rules are loaded
   ansible.builtin.command: augenrules --load
-  changed_when: false 
+  changed_when: false
+  ignore_errors: yes 

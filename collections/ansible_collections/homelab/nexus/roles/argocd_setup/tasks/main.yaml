@@ -1,62 +1,77 @@
 ---
 - name: Create ArgoCD directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
-  with_items:
-    - /opt/argocd
-    - /opt/argocd/config
-    - /opt/argocd/data
+  loop:
+    - "{{ argocd_config_dir }}"
+    - "{{ argocd_config_dir }}/applications"
+    - "{{ argocd_config_dir }}/projects"
+    - "{{ argocd_config_dir }}/repositories"
+    - "{{ argocd_data_dir }}"
 
 - name: Install ArgoCD CLI
-  get_url:
-    url: https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+  ansible.builtin.get_url:
+    url: "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64"
     dest: /usr/local/bin/argocd
     mode: '0755'
 
-- name: Create ArgoCD systemd service
-  template:
-    src: argocd-server.service.j2
-    dest: /etc/systemd/system/argocd-server.service
-    mode: '0644'
-  notify: reload systemd
-
-- name: Create ArgoCD repo-server service
-  template:
-    src: argocd-repo-server.service.j2
-    dest: /etc/systemd/system/argocd-repo-server.service
-    mode: '0644'
-  notify: reload systemd
-
-- name: Create ArgoCD application controller service
-  template:
-    src: argocd-application-controller.service.j2
-    dest: /etc/systemd/system/argocd-application-controller.service
-    mode: '0644'
-  notify: reload systemd
-
-- name: Create ArgoCD configuration
-  template:
+- name: Create ArgoCD configuration file
+  ansible.builtin.template:
     src: argocd-cm.yaml.j2
-    dest: /opt/argocd/config/argocd-cm.yaml
+    dest: "{{ argocd_config_dir }}/argocd-cm.yaml"
     mode: '0644'
+  notify: restart argocd
+
+- name: Create ArgoCD secret configuration
+  ansible.builtin.template:
+    src: argocd-secret.yaml.j2
+    dest: "{{ argocd_config_dir }}/argocd-secret.yaml"
+    mode: '0600'
+  notify: restart argocd
+
+- name: Create initial ArgoCD projects
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ argocd_config_dir }}/projects/{{ item.dest }}"
+    mode: '0644'
+  loop:
+    - src: projects/homelab-project.yaml.j2
+      dest: homelab-project.yaml
+    - src: projects/infrastructure-project.yaml.j2
+      dest: infrastructure-project.yaml
 
 - name: Create initial ArgoCD applications
-  template:
+  ansible.builtin.template:
     src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
+    dest: "{{ argocd_config_dir }}/applications/{{ item.dest }}"
     mode: '0644'
-  with_items:
-    - { src: 'applications/vyos-app.yaml.j2', dest: '/opt/argocd/config/applications/vyos-app.yaml' }
-    - { src: 'applications/network-services-app.yaml.j2', dest: '/opt/argocd/config/applications/network-services-app.yaml' }
+  loop:
+    - src: applications/homelab-infrastructure.yaml.j2
+      dest: homelab-infrastructure.yaml
+    - src: applications/network-services.yaml.j2
+      dest: network-services.yaml
+    - src: applications/monitoring-stack.yaml.j2
+      dest: monitoring-stack.yaml
 
-- name: Start and enable ArgoCD services
-  systemd:
-    name: "{{ item }}"
-    state: started
-    enabled: yes
-  with_items:
-    - argocd-server
-    - argocd-repo-server
-    - argocd-application-controller 
+- name: Create repository configurations
+  ansible.builtin.template:
+    src: repositories/homelab-repo.yaml.j2
+    dest: "{{ argocd_config_dir }}/repositories/homelab-repo.yaml"
+    mode: '0644'
+  notify: restart argocd
+
+- name: Create ArgoCD initialization script
+  ansible.builtin.template:
+    src: init-argocd.sh.j2
+    dest: "{{ argocd_config_dir }}/init-argocd.sh"
+    mode: '0755'
+
+- name: Set up ArgoCD admin password
+  ansible.builtin.shell: |
+    echo "{{ argocd_admin_password }}" | argocd account update-password --account admin --new-password /dev/stdin
+  environment:
+    ARGOCD_SERVER: "{{ argocd_server_url }}"
+  when: argocd_admin_password is defined
+  no_log: true 

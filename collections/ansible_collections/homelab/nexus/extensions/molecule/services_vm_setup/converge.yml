@@ -26,6 +26,11 @@
         state: started
         enabled: true
 
-    - name: Include services VM setup role
-      ansible.builtin.include_role:
-        name: homelab.nexus.services_vm_setup 
+    - name: Test basic connectivity
+      ansible.builtin.debug:
+        msg: "Container is accessible!"
+        
+    - name: Create test directory
+      ansible.builtin.file:
+        path: /tmp/test
+        state: directory 

@@ -1,0 +1,19 @@
+#!ipxe
+# Ubuntu Server 22.04 LTS Installation
+
+echo Starting Ubuntu Server 22.04 LTS installation...
+
+# Download kernel and initrd
+kernel http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/images/ubuntu-22.04/vmlinuz
+initrd http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/images/ubuntu-22.04/initrd
+
+# Set boot parameters
+imgargs vmlinuz root=/dev/ram0 ramdisk_size=1500000 ip=dhcp url=http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/images/ubuntu-22.04-server-amd64.iso autoinstall
+
+# Boot
+boot || goto failed
+
+:failed
+echo Ubuntu Server boot failed
+prompt Press any key to return to menu...
+chain http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/boot.ipxe

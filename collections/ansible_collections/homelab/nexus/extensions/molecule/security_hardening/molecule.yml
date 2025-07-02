@@ -7,12 +7,16 @@ driver:
   name: docker
 platforms:
   - name: security-test
-    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    image: "geerlingguy/docker-ubuntu2204-ansible:latest"
     pre_build_image: true
-    command: ""
+    command: "/lib/systemd/systemd"
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /dev/kvm:/dev/kvm
+    cgroupns_mode: host
     privileged: true
+    capabilities:
+      - SYS_ADMIN
     groups:
       - nexus
 provisioner:
@@ -22,11 +26,11 @@ provisioner:
       callback_whitelist: profile_tasks
       retry_files_enabled: false
       host_key_checking: false
-      remote_tmp: /tmp/.ansible
+      remote_tmp: /tmp/ansible
   inventory:
     group_vars:
       all:
         ansible_python_interpreter: /usr/bin/python3
-        ansible_connection: community.docker.docker
+        ansible_connection: docker
 verifier:
   name: ansible 

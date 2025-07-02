@@ -1,0 +1,21 @@
+---
+# DNS Configuration
+controld_enabled: true
+controld_upstream_dns:
+  - "1.1.1.1"
+  - "1.0.0.1"
+controld_log_level: "info"
+
+# DHCP Configuration
+dhcp_enabled: false  # Disabled by default, VyOS handles DHCP per VLAN
+dhcp_interface: "eth1"
+dhcp_lease_time: 86400
+
+# NTP Configuration
+ntp_enabled: true
+ntp_servers:
+  - "pool.ntp.org"
+  - "time.cloudflare.com"
+ntp_allow_clients:
+  - "10.0.0.0/8"
+  - "192.168.0.0/16"

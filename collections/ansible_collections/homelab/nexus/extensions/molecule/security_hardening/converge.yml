@@ -19,4 +19,4 @@
 
     - name: Include security hardening role
       ansible.builtin.include_role:
-        name: homelab.nexus.security_hardening 
+        name: ../../../roles/security_hardening 

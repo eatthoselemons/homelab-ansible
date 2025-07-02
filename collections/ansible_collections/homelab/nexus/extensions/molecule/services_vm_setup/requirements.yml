@@ -1,4 +1,7 @@
 ---
+roles:
+  - name: stafwag.qemu_img
+
 collections:
   - name: community.general
   - name: community.libvirt

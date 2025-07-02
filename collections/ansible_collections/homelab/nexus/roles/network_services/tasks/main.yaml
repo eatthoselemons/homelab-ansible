@@ -1,0 +1,47 @@
+---
+- name: Create network services directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/services/dns
+    - /opt/services/dhcp
+    - /opt/services/ntp
+    - /var/log/network-services
+
+- name: Configure Control-D DNS service
+  ansible.builtin.template:
+    src: controld.conf.j2
+    dest: /opt/services/dns/controld.conf
+    mode: '0644'
+  notify: restart dns service
+
+- name: Configure DHCP server
+  ansible.builtin.template:
+    src: dhcpd.conf.j2
+    dest: /opt/services/dhcp/dhcpd.conf
+    mode: '0644'
+  notify: restart dhcp service
+
+- name: Configure NTP service
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /opt/services/ntp/chrony.conf
+    mode: '0644'
+  notify: restart ntp service
+
+- name: Create network services docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/services/network-services-compose.yml
+    mode: '0644'
+  notify: restart network services
+
+- name: Start network services
+  community.docker.docker_compose:
+    project_src: /opt/services
+    project_name: network-services
+    files:
+      - network-services-compose.yml
+    state: present

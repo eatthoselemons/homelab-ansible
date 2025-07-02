@@ -1,0 +1,99 @@
+---
+- name: Set kernel parameters for security
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: 'net.ipv4.ip_forward', value: '0' }
+    - { name: 'net.ipv4.conf.all.send_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.default.send_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.all.accept_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.default.accept_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.all.secure_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.default.secure_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.all.log_martians', value: '1' }
+    - { name: 'net.ipv4.conf.default.log_martians', value: '1' }
+    - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { name: 'net.ipv4.icmp_ignore_bogus_error_responses', value: '1' }
+    - { name: 'net.ipv4.conf.all.rp_filter', value: '1' }
+    - { name: 'net.ipv4.conf.default.rp_filter', value: '1' }
+    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+  ignore_errors: yes
+
+- name: Disable unused filesystems
+  lineinfile:
+    dest: /etc/modprobe.d/blacklist-rare-filesystems.conf
+    line: "install {{ item }} /bin/true"
+    create: yes
+  loop:
+    - cramfs
+    - freevxfs
+    - jffs2
+    - hfs
+    - hfsplus
+    - squashfs
+    - udf
+
+- name: Set file permissions on sensitive files
+  file:
+    path: "{{ item }}"
+    mode: '0600'
+    owner: root
+    group: root
+  loop:
+    - /etc/passwd
+    - /etc/shadow
+    - /etc/gshadow
+    - /etc/group
+  ignore_errors: yes
+
+- name: Configure login definitions
+  lineinfile:
+    dest: /etc/login.defs
+    regexp: "^{{ item.key }}"
+    line: "{{ item.key }} {{ item.value }}"
+    state: present
+  loop:
+    - { key: 'PASS_MAX_DAYS', value: '90' }
+    - { key: 'PASS_MIN_DAYS', value: '1' }
+    - { key: 'PASS_WARN_AGE', value: '7' }
+    - { key: 'LOGIN_RETRIES', value: '3' }
+    - { key: 'LOGIN_TIMEOUT', value: '60' }
+
+- name: Configure umask
+  lineinfile:
+    dest: /etc/profile
+    regexp: "^umask"
+    line: "umask 027"
+    state: present
+
+- name: Install and configure fail2ban
+  apt:
+    name: fail2ban
+    state: present
+    update_cache: yes
+
+- name: Configure fail2ban for SSH
+  copy:
+    content: |
+      [sshd]
+      enabled = true
+      port = {{ ssh_port | default(22) }}
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = 3
+      bantime = 3600
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart fail2ban
+
+- name: Enable and start fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+  ignore_errors: yes

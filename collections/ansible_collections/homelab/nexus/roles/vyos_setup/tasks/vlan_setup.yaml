@@ -1,0 +1,58 @@
+---
+- name: Create VLAN-aware bridge networks
+  community.libvirt.virt_net:
+    name: "{{ item.name }}"
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'vlan_network.xml.j2', item=item) }}"
+  loop: "{{ vyos_vlan_networks }}"
+
+- name: Start VLAN networks
+  community.libvirt.virt_net:
+    name: "{{ item.name }}"
+    state: active
+  loop: "{{ vyos_vlan_networks }}"
+
+- name: Install OpenVSwitch if not in container
+  apt:
+    name: openvswitch-switch
+    state: present
+    update_cache: yes
+  ignore_errors: yes
+  when: 
+    - vyos_use_ovs | default(true)
+    - ansible_env.container is not defined
+
+- name: Configure OpenVSwitch for VLAN support
+  ansible.builtin.shell: |
+    ovs-vsctl --may-exist add-br {{ item.bridge_name }}
+    ovs-vsctl set bridge {{ item.bridge_name }} other_config:stp-enable=true
+    ovs-vsctl set bridge {{ item.bridge_name }} other_config:stp-forward-delay=2
+    ovs-vsctl set bridge {{ item.bridge_name }} other_config:stp-max-age=10
+  loop: "{{ vyos_vlan_networks }}"
+  ignore_errors: yes
+  when: 
+    - vyos_use_ovs | default(true)
+    - ansible_env.container is not defined
+
+- name: Configure VLAN interfaces on host
+  ansible.builtin.template:
+    src: vlan-interfaces.j2
+    dest: "/etc/systemd/network/{{ item.vlan_id }}-{{ item.name }}.network"
+    mode: '0644'
+  loop: "{{ vyos_vlan_networks }}"
+  notify: restart systemd-networkd
+  when: vyos_configure_host_vlans | default(false)
+
+- name: Create VLAN bridge interfaces
+  ansible.builtin.shell: |
+    ip link add name {{ item.bridge_name }} type bridge
+    ip link set dev {{ item.bridge_name }} up
+    {% if item.vlan_id is defined %}
+    ip link add link {{ vyos_trunk_interface | default('eth1') }} name {{ vyos_trunk_interface | default('eth1') }}.{{ item.vlan_id }} type vlan id {{ item.vlan_id }}
+    ip link set dev {{ vyos_trunk_interface | default('eth1') }}.{{ item.vlan_id }} up
+    ip link set dev {{ vyos_trunk_interface | default('eth1') }}.{{ item.vlan_id }} master {{ item.bridge_name }}
+    {% endif %}
+  loop: "{{ vyos_vlan_networks }}"
+  ignore_errors: true
+  when: vyos_configure_host_vlans | default(false)

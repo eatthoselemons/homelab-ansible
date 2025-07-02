@@ -23,7 +23,9 @@ MaxAuthTries 3
 MaxSessions 10
 
 # Allow specific users
+{% if ansible_user is defined %}
 AllowUsers {{ ansible_user }}
+{% endif %}
 
 # Modern cipher configuration
 KexAlgorithms curve25519-sha256@libssh.org

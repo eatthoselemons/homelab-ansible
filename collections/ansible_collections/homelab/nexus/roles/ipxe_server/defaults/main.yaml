@@ -1,0 +1,51 @@
+---
+# iPXE Server Configuration
+ipxe_root_dir: /opt/services/ipxe
+ipxe_server_ip: "{{ ansible_default_ipv4.address | default('192.168.122.1') }}"
+ipxe_server_port: "{{ ipxe_port | default(8083) }}"
+
+# TFTP Configuration
+ipxe_enable_tftp: true
+ipxe_tftp_port: 69
+
+# PXE Boot Configuration
+ipxe_enable_pxe: true
+ipxe_download_images: false
+
+# Boot Menu Configuration
+ipxe_menu_title: "Homelab Network Boot Menu"
+ipxe_menu_timeout: 30000  # 30 seconds in milliseconds
+
+# Available boot options
+ipxe_boot_options:
+  - name: "Ubuntu Server 22.04 LTS"
+    description: "Install Ubuntu Server 22.04 LTS"
+    config: "ubuntu-server.ipxe"
+    enabled: true
+  - name: "VyOS Router"
+    description: "Boot VyOS Router Image"
+    config: "vyos.ipxe"
+    enabled: true
+  - name: "Memory Test"
+    description: "Run Memory Diagnostic"
+    config: "memtest.ipxe"
+    enabled: true
+  - name: "Local Boot"
+    description: "Boot from local disk"
+    config: "local"
+    enabled: true
+
+# Boot images to download (optional)
+ipxe_boot_images:
+  - name: "ubuntu-22.04-server-amd64.iso"
+    url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso"
+  - name: "memtest86+-6.00.iso"
+    url: "https://www.memtest.org/download/6.00/memtest86+-6.00.iso"
+
+# Network configuration
+ipxe_dhcp_range_start: "192.168.122.100"
+ipxe_dhcp_range_end: "192.168.122.200"
+ipxe_gateway: "192.168.122.1"
+ipxe_dns_servers:
+  - "1.1.1.1"
+  - "1.0.0.1"

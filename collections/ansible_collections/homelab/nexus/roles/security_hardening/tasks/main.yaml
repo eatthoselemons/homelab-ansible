@@ -43,6 +43,14 @@
     group: root
     mode: '0644'
 
+- name: Ensure SSH directory exists
+  file:
+    path: /etc/ssh
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Configure SSH
   template:
     src: sshd_config.j2
