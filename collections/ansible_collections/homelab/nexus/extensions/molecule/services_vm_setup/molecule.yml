@@ -7,7 +7,7 @@ driver:
   name: docker
 platforms:
   - name: services-test
-    image: "geerlingguy/docker-ubuntu2204-ansible:latest"
+    image: "geerlingguy/docker-ubuntu2404-ansible:latest"
     pre_build_image: true
     command: "/lib/systemd/systemd"
     volumes:
