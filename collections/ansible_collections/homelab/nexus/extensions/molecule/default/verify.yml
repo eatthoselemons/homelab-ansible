@@ -29,7 +29,7 @@
           ansible.builtin.command: ufw status
           register: ufw_status
           changed_when: false
-          failed_when: 'Status: active' not in ufw_status.stdout
+          failed_when: "'Status: active' not in ufw_status.stdout"
 
     - name: Verify VyOS setup
       block:
@@ -37,13 +37,13 @@
           ansible.builtin.command: virsh list --all
           register: vm_list
           changed_when: false
-          failed_when: 'vyos-router' not in vm_list.stdout
+          failed_when: "'vyos-router' not in vm_list.stdout"
 
         - name: Verify VyOS network configuration
           ansible.builtin.command: virsh net-list --all
           register: net_list
           changed_when: false
-          failed_when: 'vyos-net' not in net_list.stdout
+          failed_when: "'vyos-net' not in net_list.stdout"
 
     - name: Verify services VM setup
       block:
@@ -51,10 +51,10 @@
           ansible.builtin.command: virsh list --all
           register: vm_list
           changed_when: false
-          failed_when: 'services-vm' not in vm_list.stdout
+          failed_when: "'services-vm' not in vm_list.stdout"
 
         - name: Verify services VM network configuration
           ansible.builtin.command: virsh net-list --all
           register: net_list
           changed_when: false
-          failed_when: 'services-net' not in net_list.stdout 
+          failed_when: "'services-net' not in net_list.stdout" 
