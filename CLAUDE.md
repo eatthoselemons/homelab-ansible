@@ -85,6 +85,9 @@ molecule converge -s vyos_setup
 # ✅ VyOS Testing: Full libvirt + KVM acceleration in containers
 # ✅ Network Setup: WAN/LAN networks created and functional
 # ✅ VM Creation: VyOS VMs can be created and started successfully
+# ✅ Centralized Configuration: Shared molecule base config eliminates duplication
+# ✅ Environment Variables: Ubuntu version management through .env.yml
+# ✅ Test Isolation: Each scenario maintains independent test environments
 # 
 # Technical Setup:
 # - Docker containers run with systemd and KVM hardware acceleration
@@ -92,12 +95,29 @@ molecule converge -s vyos_setup
 # - Disk image creation using stafwag.qemu_img community role
 # - Conditional network templates: NAT mode for testing, bridge mode for production
 # - Proper file ownership and permissions for libvirt access
+# - Shared molecule configuration in /.config/molecule/config.yml
+# - Centralized environment variables in molecule/.env.yml
+# - Role-specific converge.yml files maintain test isolation
 # 
 # Dependencies:
 # - KVM hardware acceleration (/dev/kvm mounted in containers)
 # - systemd running in containers for service management
 # - stafwag.qemu_img role for disk image creation
 # - community.libvirt collection for VM and network management
+# Molecule Testing Configuration:
+# 1. Environment Variables (molecule/.env.yml):
+#    Usage: molecule -e molecule/.env.yml converge -s scenario_name
+# 3. Scenario-Specific Testing:
+#    - default: Basic container environment validation
+#    - security_hardening: Security role testing with auditd, UFW, fail2ban
+#    - vyos_setup: VyOS VM creation with libvirt in NAT mode
+#    - services_vm_setup: Services VM prerequisites and libvirt validation
+#    - harvester_test: Container networking validation for cluster testing
+# 4. Test Isolation Principles:
+#    - Each scenario gets fresh Docker container
+#    - No shared state between role tests
+#    - Role-specific prerequisites in individual converge.yml files
+#    - Independent failure domains prevent test contamination
 ```
 
 ## Repository Structure
