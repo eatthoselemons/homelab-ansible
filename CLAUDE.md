@@ -79,7 +79,7 @@ molecule converge -s vyos_setup
 # No need to reactivate unless you open a new terminal
 
 # Current Status: 
-# ✅ Structure: All 4 scenarios discovered and configured properly
+# ✅ Structure: All 5 scenarios discovered and configured properly
 # ✅ Syntax: All playbooks pass syntax validation  
 # ✅ Connectivity: Docker container setup working with systemd
 # ✅ VyOS Testing: Full libvirt + KVM acceleration in containers
@@ -132,10 +132,6 @@ molecule converge -s vyos_setup
 #    - Role-specific prerequisites in individual converge.yml files
 #    - Independent failure domains prevent test contamination
 # 
-# 5. Version Management:
-#    - Update Ubuntu version: Edit UBUNTU_VERSION in molecule/.env.yml
-#    - Future versions (24.10, etc.): Change two variables instead of 5 files
-#    - Centralized control without logic sharing or test dependencies
 ```
 
 ## Repository Structure
