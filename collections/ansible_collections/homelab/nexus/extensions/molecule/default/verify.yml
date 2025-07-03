@@ -1,0 +1,60 @@
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Verify security hardening
+      block:
+        - name: Check SSH configuration
+          ansible.builtin.command: sshd -t
+          register: sshd_check
+          changed_when: false
+          failed_when: sshd_check.rc != 0
+
+        - name: Verify auditd is running
+          ansible.builtin.service_facts:
+          ansible.builtin.assert:
+            that:
+              - "'auditd' in ansible_facts.services"
+              - "ansible_facts.services['auditd'].status == 'running'"
+
+        - name: Verify audit rules
+          ansible.builtin.command: auditctl -l
+          register: audit_rules
+          changed_when: false
+          failed_when: >
+            'system_auth_changes' not in audit_rules.stdout or
+            'host_vm_config_changes' not in audit_rules.stdout
+
+        - name: Verify UFW is active
+          ansible.builtin.command: ufw status
+          register: ufw_status
+          changed_when: false
+          failed_when: "'Status: active' not in ufw_status.stdout"
+
+    - name: Verify VyOS setup
+      block:
+        - name: Check VyOS VM exists
+          ansible.builtin.command: virsh list --all
+          register: vm_list
+          changed_when: false
+          failed_when: "'vyos-router' not in vm_list.stdout"
+
+        - name: Verify VyOS network configuration
+          ansible.builtin.command: virsh net-list --all
+          register: net_list
+          changed_when: false
+          failed_when: "'vyos-net' not in net_list.stdout"
+
+    - name: Verify services VM setup
+      block:
+        - name: Check services VM exists
+          ansible.builtin.command: virsh list --all
+          register: vm_list
+          changed_when: false
+          failed_when: "'services-vm' not in vm_list.stdout"
+
+        - name: Verify services VM network configuration
+          ansible.builtin.command: virsh net-list --all
+          register: net_list
+          changed_when: false
+          failed_when: "'services-net' not in net_list.stdout" 

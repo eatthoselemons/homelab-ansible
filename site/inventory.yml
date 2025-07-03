@@ -1,0 +1,40 @@
+all:
+  children:
+    nexus:
+      hosts:
+        nexus:
+          ansible_host: 10.0.0.59  # Updated IP address
+          ansible_user: user       # Replace with your actual username
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa  # Path to your SSH key
+          ansible_python_interpreter: /usr/bin/python3
+      vars:
+        # Network configuration
+        network_interface: eth0
+        network_ip: 10.0.0.59/24  # Updated IP to match host
+        network_gateway: 10.0.0.1
+        network_dns:
+          - 1.1.1.1
+          - 1.0.0.1
+
+        # VyOS VM configuration
+        vyos_vm_name: vyos-router
+        vyos_vm_memory: 2048
+        vyos_vm_cpus: 2
+        vyos_vm_disk_size: 20G
+        vyos_vm_network:
+          - name: eth0
+            type: bridge
+            source: br0
+          - name: eth1
+            type: bridge
+            source: br1
+
+        # Services VM configuration
+        services_vm_name: services-vm
+        services_vm_memory: 4096
+        services_vm_cpus: 4
+        services_vm_disk_size: 50G
+        services_vm_network:
+          - name: eth0
+            type: bridge
+            source: br1

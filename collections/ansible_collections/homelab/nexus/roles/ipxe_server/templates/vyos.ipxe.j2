@@ -1,0 +1,19 @@
+#!ipxe
+# VyOS Router Boot Configuration
+
+echo Starting VyOS Router...
+
+# Download VyOS kernel and initrd
+kernel http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/images/vyos/vmlinuz
+initrd http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/images/vyos/initrd.img
+
+# Set VyOS boot parameters
+imgargs vmlinuz root=/dev/ram0 ramdisk_size=512000 ip=dhcp vyos-union=/dev/ram1
+
+# Boot VyOS
+boot || goto failed
+
+:failed
+echo VyOS boot failed
+prompt Press any key to return to menu...
+chain http://{{ ipxe_server_ip }}:{{ ipxe_server_port }}/boot.ipxe

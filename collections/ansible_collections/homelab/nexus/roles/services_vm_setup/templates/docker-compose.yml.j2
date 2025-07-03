@@ -1,0 +1,96 @@
+version: '3.8'
+
+networks:
+  services-net:
+    external: true
+
+services:
+  # iPXE Network Boot Server
+  ipxe-server:
+    image: nginx:alpine
+    container_name: ipxe-server
+    restart: unless-stopped
+    ports:
+      - "{{ ipxe_port | default(8083) }}:80"
+      - "69:69/udp"  # TFTP
+    volumes:
+      - /opt/services/ipxe:/usr/share/nginx/html:ro
+      - /opt/services/ipxe/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - services-net
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+
+  # Control-D DNS Service
+  controld-dns:
+    image: controld/ctrld:latest
+    container_name: controld-dns
+    restart: unless-stopped
+    ports:
+      - "{{ controld_port | default(8084) }}:8080"
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - /opt/services/dns:/app/config:ro
+    networks:
+      - services-net
+    command: run --config /app/config/controld.conf
+
+  # DHCP Server (if needed)
+  dhcp-server:
+    image: networkboot/dhcpd:latest
+    container_name: dhcp-server
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /opt/services/dhcp:/data
+    environment:
+      - DHCP_INTERFACE={{ lan_interface | default('eth1') }}
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    profiles:
+      - dhcp  # Only start if dhcp profile is enabled
+
+  # ArgoCD (GitOps)
+  argocd-server:
+    image: quay.io/argoproj/argocd:latest
+    container_name: argocd-server
+    restart: unless-stopped
+    ports:
+      - "{{ argocd_port | default(8080) }}:8080"
+    volumes:
+      - /opt/services/argocd:/app/config
+    networks:
+      - services-net
+    command: argocd-server --insecure --config-file /app/config/argocd-cm.yaml
+    environment:
+      - ARGOCD_SERVER_INSECURE=true
+      - ARGOCD_LOG_LEVEL=info
+
+  # ArgoCD Repository Server
+  argocd-repo-server:
+    image: quay.io/argoproj/argocd:latest
+    container_name: argocd-repo-server
+    restart: unless-stopped
+    ports:
+      - "{{ argocd_repo_port | default(8081) }}:8081"
+    volumes:
+      - /opt/services/argocd:/app/config
+    networks:
+      - services-net
+    command: argocd-repo-server --config-file /app/config/argocd-cm.yaml
+
+  # ArgoCD Application Controller
+  argocd-application-controller:
+    image: quay.io/argoproj/argocd:latest
+    container_name: argocd-application-controller
+    restart: unless-stopped
+    ports:
+      - "{{ argocd_controller_port | default(8082) }}:8082"
+    volumes:
+      - /opt/services/argocd:/app/config
+    networks:
+      - services-net
+    command: argocd-application-controller --config-file /app/config/argocd-cm.yaml

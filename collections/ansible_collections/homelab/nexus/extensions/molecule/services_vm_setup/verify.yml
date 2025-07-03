@@ -1,0 +1,48 @@
+---
+- name: Verify Services VM Setup
+  hosts: all
+  tasks:
+    - name: Verify Services VM
+      block:
+        - name: Check Services VM exists
+          ansible.builtin.command: virsh list --all
+          register: vm_list
+          changed_when: false
+          failed_when: 'services-vm' not in vm_list.stdout
+
+        - name: Verify Services VM configuration
+          ansible.builtin.command: virsh dumpxml services-vm
+          register: vm_config
+          changed_when: false
+          failed_when: >
+            '<memory unit="KiB">2097152</memory>' not in vm_config.stdout or
+            '<vcpu>2</vcpu>' not in vm_config.stdout
+
+    - name: Verify Services networking
+      block:
+        - name: Check Services network exists
+          ansible.builtin.command: virsh net-list --all
+          register: net_list
+          changed_when: false
+          failed_when: 'services-net' not in net_list.stdout
+
+        - name: Verify Services network configuration
+          ansible.builtin.command: virsh net-dumpxml services-net
+          register: net_config
+          changed_when: false
+          failed_when: >
+            '<ip address="192.168.123.1" netmask="255.255.255.0">' not in net_config.stdout
+
+    - name: Verify Services disk
+      block:
+        - name: Check Services disk exists
+          ansible.builtin.command: ls -l /var/lib/libvirt/images/services-vm.qcow2
+          register: disk_check
+          changed_when: false
+          failed_when: disk_check.rc != 0
+
+        - name: Verify Services disk size
+          ansible.builtin.command: qemu-img info /var/lib/libvirt/images/services-vm.qcow2
+          register: disk_info
+          changed_when: false
+          failed_when: 'virtual size: 20G' not in disk_info.stdout 

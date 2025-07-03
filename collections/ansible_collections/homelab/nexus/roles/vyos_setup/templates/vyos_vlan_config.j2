@@ -1,0 +1,57 @@
+# VyOS VLAN Configuration
+# Apply this configuration in VyOS configure mode
+
+# Configure physical interfaces
+set interfaces ethernet eth0 description "WAN Interface"
+{% if vyos_wan_dhcp %}
+set interfaces ethernet eth0 address dhcp
+{% endif %}
+set interfaces ethernet eth0 hw-id auto
+
+set interfaces ethernet eth1 description "LAN Trunk Interface"
+set interfaces ethernet eth1 hw-id auto
+
+{% for vlan in vyos_vlan_networks %}
+# VLAN {{ vlan.vlan_id }} - {{ vlan.description }}
+set interfaces ethernet eth1 vif {{ vlan.vlan_id }} description "{{ vlan.description }}"
+set interfaces ethernet eth1 vif {{ vlan.vlan_id }} address {{ vlan.gateway }}/{{ vlan.subnet.split('/')[1] }}
+
+{% if vlan.dhcp_enabled %}
+# DHCP for VLAN {{ vlan.vlan_id }}
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} default-router {{ vlan.gateway }}
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} name-server {{ vyos_dns_servers | join(' ') }}
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} domain-name {{ vlan.name }}.homelab.local
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} range vlan{{ vlan.vlan_id }} start {{ vlan.dhcp_range.split('-')[0] }}
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} range vlan{{ vlan.vlan_id }} stop {{ vlan.dhcp_range.split('-')[1] }}
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} lease 86400
+{% endif %}
+
+{% endfor %}
+
+# NAT Configuration
+set nat source rule 100 outbound-interface eth0
+set nat source rule 100 source address 10.0.0.0/8
+set nat source rule 100 translation address masquerade
+
+# DNS Forwarding
+set service dns forwarding listen-address 127.0.0.1
+{% for vlan in vyos_vlan_networks %}
+set service dns forwarding listen-address {{ vlan.gateway }}
+{% endfor %}
+{% for dns in vyos_dns_servers %}
+set service dns forwarding name-server {{ dns }}
+{% endfor %}
+set service dns forwarding cache-size 1000
+
+# NTP
+{% for ntp in vyos_ntp_servers %}
+set system ntp server {{ ntp }}
+{% endfor %}
+
+# SSH Configuration
+set service ssh port {{ vyos_ssh_port }}
+set service ssh listen-address 0.0.0.0
+
+# Web Interface
+set service https listen-address 0.0.0.0
+set service https port {{ vyos_web_port }}

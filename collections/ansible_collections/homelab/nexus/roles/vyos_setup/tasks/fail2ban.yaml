@@ -1,0 +1,36 @@
+---
+- name: Install fail2ban on VyOS
+  vyos_config:
+    lines:
+      - set system package repository debian components 'main contrib non-free'
+      - set system package repository debian distribution 'bullseye'
+      - set system package repository debian url 'http://deb.debian.org/debian'
+      - commit
+      - save
+      - run update-system
+      - run apt-get update
+      - run apt-get install -y fail2ban
+
+- name: Configure fail2ban on VyOS
+  vyos_config:
+    lines:
+      - set system fail2ban default bantime '3600'
+      - set system fail2ban default findtime '600'
+      - set system fail2ban default maxretry '3'
+      - set system fail2ban ssh enabled 'true'
+      - set system fail2ban ssh port 'ssh'
+      - set system fail2ban ssh filter 'sshd'
+      - set system fail2ban ssh logpath '/var/log/auth.log'
+      - set system fail2ban web enabled 'true'
+      - set system fail2ban web port 'https'
+      - set system fail2ban web filter 'vyos-web'
+      - set system fail2ban web logpath '/var/log/vyos/vyos-web.log'
+      - commit
+      - save
+
+- name: Start and enable fail2ban
+  vyos_config:
+    lines:
+      - set system fail2ban enable
+      - commit
+      - save 

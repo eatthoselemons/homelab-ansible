@@ -1,0 +1,49 @@
+---
+- name: Wait for VyOS to be accessible
+  ansible.builtin.wait_for:
+    port: "{{ vyos_ssh_port | default(2222) }}"
+    host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    delay: 60
+    timeout: 300
+  when: vyos_vm_ip is defined
+
+- name: Create VyOS configuration script
+  ansible.builtin.template:
+    src: vyos_bootstrap.sh.j2
+    dest: /tmp/vyos_bootstrap.sh
+    mode: '0755'
+
+- name: Generate VyOS configuration for VLANs
+  ansible.builtin.template:
+    src: vyos_vlan_config.j2
+    dest: /tmp/vyos_vlan_config.txt
+    mode: '0644'
+
+- name: Generate VyOS firewall configuration
+  ansible.builtin.template:
+    src: vyos_firewall_config.j2
+    dest: /tmp/vyos_firewall_config.txt
+    mode: '0644'
+
+- name: Generate VyOS DHCP configuration
+  ansible.builtin.template:
+    src: vyos_dhcp_config.j2
+    dest: /tmp/vyos_dhcp_config.txt
+    mode: '0644'
+
+- name: Apply VyOS configuration (manual step)
+  ansible.builtin.debug:
+    msg: |
+      VyOS configuration files have been generated:
+      - /tmp/vyos_bootstrap.sh - Initial bootstrap script
+      - /tmp/vyos_vlan_config.txt - VLAN interface configuration
+      - /tmp/vyos_firewall_config.txt - Firewall rules
+      - /tmp/vyos_dhcp_config.txt - DHCP server configuration
+      
+      To apply these configurations:
+      1. SSH to VyOS: ssh vyos@{{ vyos_vm_ip | default('192.168.122.50') }} -p {{ vyos_ssh_port | default(2222) }}
+      2. Enter configuration mode: configure
+      3. Apply configurations from the generated files
+      4. Commit and save: commit && save
+      
+      Alternatively, use the vyos_command module with proper SSH key setup.

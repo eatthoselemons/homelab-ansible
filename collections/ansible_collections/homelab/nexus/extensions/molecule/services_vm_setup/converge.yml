@@ -1,0 +1,40 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    # Required OS setup for services VM testing
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install libvirt and VM management packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - libvirt-daemon-system
+          - qemu-kvm
+          - libvirt-clients
+          - bridge-utils
+          - virtinst
+          - systemd
+        state: present
+
+    - name: Start and enable libvirt service
+      ansible.builtin.systemd:
+        name: libvirtd
+        state: started
+        enabled: true
+
+    # Test that services_vm_setup role can run in this environment
+    # This validates the prerequisites for VM creation without actually creating VMs
+    - name: Verify libvirt is accessible
+      ansible.builtin.command:
+        cmd: virsh version
+      register: virsh_result
+      changed_when: false
+
+    - name: Confirm services VM setup environment ready
+      ansible.builtin.debug:
+        msg: "Services VM setup scenario - libvirt {{ virsh_result.stdout.split('\n')[1].split()[2] }} ready for VM management" 

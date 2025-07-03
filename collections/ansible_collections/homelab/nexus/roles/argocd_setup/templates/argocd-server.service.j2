@@ -1,0 +1,17 @@
+[Unit]
+Description=ArgoCD API Server
+After=network.target
+
+[Service]
+Type=simple
+User=user
+Group=user
+ExecStart=/usr/local/bin/argocd server \
+    --config /opt/argocd/config/argocd-cm.yaml \
+    --repo-server-address localhost:8081 \
+    --application-controller-address localhost:8082
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target 

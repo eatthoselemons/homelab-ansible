@@ -1,0 +1,6 @@
+---
+- name: restart ipxe server
+  community.docker.docker_container:
+    name: ipxe-server
+    state: started
+    restart: true

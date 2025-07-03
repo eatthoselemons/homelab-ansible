@@ -1,0 +1,139 @@
+---
+# VyOS VM Configuration
+vyos_vm:
+  name: vyos-router
+  memory: 4096
+  vcpus: 2
+  disk_size: 20G
+  disk_path: /var/lib/libvirt/images/vyos-router.qcow2
+
+# VyOS Network Configuration
+vyos_vm_ip: "192.168.122.50"
+vyos_ssh_port: 2222
+vyos_web_port: 443
+
+# Network Mode (bridge for production, nat for testing)
+vyos_network_mode: bridge
+vyos_enable_vlans: true
+vyos_configure_router: true
+vyos_configure_host_vlans: false
+vyos_use_ovs: true
+vyos_trunk_interface: "eth1"
+
+# WAN Interface Configuration
+vyos_wan_interface: "eth0"
+vyos_wan_dhcp: true
+
+# VLAN Network Definitions
+vyos_vlan_networks:
+  - name: "dmz"
+    vlan_id: 10
+    description: "DMZ Network - External facing services"
+    subnet: "10.10.0.0/24"
+    gateway: "10.10.0.1"
+    bridge_name: "br-dmz"
+    dhcp_enabled: true
+    dhcp_range: "10.10.0.100-10.10.0.199"
+    firewall_rules:
+      - "deny from any to 10.20.0.0/24"
+      - "deny from any to 10.30.0.0/24"
+      - "deny from any to 10.40.0.0/24"
+      - "deny from any to 10.50.0.0/24"
+      - "allow from any to internet"
+
+  - name: "untrusted-wifi"
+    vlan_id: 20
+    description: "Untrusted WiFi - Guest devices"
+    subnet: "10.20.0.0/24"
+    gateway: "10.20.0.1"
+    bridge_name: "br-untrusted"
+    dhcp_enabled: true
+    dhcp_range: "10.20.0.100-10.20.0.199"
+    firewall_rules:
+      - "deny from any to 10.10.0.0/24"
+      - "deny from any to 10.30.0.0/24"
+      - "deny from any to 10.40.0.0/24"
+      - "deny from any to 10.50.0.0/24"
+      - "allow from any to internet"
+
+  - name: "trusted-wifi"
+    vlan_id: 30
+    description: "Trusted WiFi - Personal devices"
+    subnet: "10.30.0.0/24"
+    gateway: "10.30.0.1"
+    bridge_name: "br-trusted"
+    dhcp_enabled: true
+    dhcp_range: "10.30.0.100-10.30.0.199"
+    firewall_rules:
+      - "allow from any to 10.50.0.0/24"
+      - "deny from any to 10.10.0.0/24"
+      - "deny from any to 10.20.0.0/24"
+      - "deny from any to 10.40.0.0/24"
+      - "allow from any to internet"
+
+  - name: "iot"
+    vlan_id: 40
+    description: "IoT Network - Isolated IoT devices"
+    subnet: "10.40.0.0/24"
+    gateway: "10.40.0.1"
+    bridge_name: "br-iot"
+    dhcp_enabled: true
+    dhcp_range: "10.40.0.100-10.40.0.199"
+    firewall_rules:
+      - "deny from any to 10.10.0.0/24"
+      - "deny from any to 10.20.0.0/24"
+      - "deny from any to 10.30.0.0/24"
+      - "deny from any to 10.50.0.0/24"
+      - "allow from any to internet"
+
+  - name: "secure"
+    vlan_id: 50
+    description: "Secure Network - Main trusted network"
+    subnet: "10.50.0.0/24"
+    gateway: "10.50.0.1"
+    bridge_name: "br-secure"
+    dhcp_enabled: true
+    dhcp_range: "10.50.0.100-10.50.0.199"
+    firewall_rules:
+      - "allow from any to 10.30.0.0/24"
+      - "allow from any to 10.60.0.0/24 via jumphost"
+      - "deny from any to 10.10.0.0/24"
+      - "deny from any to 10.20.0.0/24"
+      - "deny from any to 10.40.0.0/24"
+      - "allow from any to internet"
+
+  - name: "management"
+    vlan_id: 60
+    description: "Management Network - Server administration"
+    subnet: "10.60.0.0/24"
+    gateway: "10.60.0.1"
+    bridge_name: "br-mgmt"
+    dhcp_enabled: true
+    dhcp_range: "10.60.0.100-10.60.0.199"
+    firewall_rules:
+      - "allow from 10.50.0.0/24 via jumphost"
+      - "deny from any to any"
+
+  - name: "logging"
+    vlan_id: 70
+    description: "Logging Network - System monitoring"
+    subnet: "10.70.0.0/24"
+    gateway: "10.70.0.1"
+    bridge_name: "br-logging"
+    dhcp_enabled: true
+    dhcp_range: "10.70.0.100-10.70.0.199"
+    firewall_rules:
+      - "allow from any to syslog"
+      - "deny from any to any"
+
+# DNS Configuration
+vyos_dns_servers:
+  - "1.1.1.1"
+  - "1.0.0.1"
+
+# NTP Configuration
+vyos_ntp_servers:
+  - "pool.ntp.org"
+
+# Jump Host Configuration
+vyos_jumphost_ip: "10.60.0.10"

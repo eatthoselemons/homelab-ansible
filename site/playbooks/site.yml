@@ -1,0 +1,16 @@
+---
+- name: Configure Nexus Node
+  hosts: nexus
+  become: true
+  roles:
+    - role: homelab.nexus.system_setup
+      tags: [system, always]
+    
+    - role: homelab.nexus.security_hardening
+      tags: [security, always]
+    
+    - role: homelab.nexus.vyos_setup
+      tags: [vyos]
+    
+    - role: homelab.nexus.services_vm_setup
+      tags: [services] 

@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homelab-infrastructure
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: homelab-infrastructure
+    app.kubernetes.io/part-of: homelab
+spec:
+  project: infrastructure
+  source:
+    repoURL: "{{ argocd_repositories[0].url }}"
+    targetRevision: HEAD
+    path: k8s/infrastructure
+    helm:
+      valueFiles:
+        - values-production.yaml
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10

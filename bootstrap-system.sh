@@ -6,8 +6,8 @@ trap "${trap_msg}" ERR
 virtualEnvPath=$1/ansible-venv
 
 # Install packages needed on a base Debian system
-apt update
-apt --yes install  --no-install-recommends $(
+sudo apt update
+sudo apt --yes install  --no-install-recommends $(
 echo "build-essential
       python3-httpx
       python3-dev
@@ -19,7 +19,6 @@ echo "build-essential
       sshpass" )
 
 # package requirements
-# python3-httpx - ansible opnsense
 
 mkdir -p ${virtualEnvPath}
 
@@ -30,9 +29,9 @@ ansible-cmdb
 ansible-core
 ansible-lint
 yamllint
-infisical-python
 infisicalsdk
 httpx
+molecule
 " > ${virtualEnvPath}/requirements.txt
 
 
@@ -51,6 +50,7 @@ ${virtualEnvPath}/bin/pip install --upgrade --requirement ${virtualEnvPath}/requ
 
 source ${virtualEnvPath}/bin/activate
 
+mkdir -p $1/git
 if test ! -x $1/git/ansible_systemd; then
   cd $1/git/
   git clone https://github.com/stuvusIT/ansible_systemd.git
@@ -60,5 +60,5 @@ else
 fi
 
 mkdir -p $1/.ansible/roles
-ln -s  $1/git/ansible_systemd $1/.ansible/roles
+ln -sf  $1/git/ansible_systemd $1/.ansible/roles
 

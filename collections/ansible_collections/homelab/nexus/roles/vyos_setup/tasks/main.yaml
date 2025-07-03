@@ -1,0 +1,86 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - python3-libvirt
+    state: present
+    update_cache: yes
+
+- name: Start and enable libvirtd
+  systemd:
+    name: libvirtd
+    state: started
+    enabled: yes
+
+- name: Ensure libvirt images directory exists
+  file:
+    path: /var/lib/libvirt/images
+    state: directory
+    owner: libvirt-qemu
+    group: kvm
+    mode: '0755'
+
+- name: Create VyOS disk image
+  include_role:
+    name: stafwag.qemu_img
+  vars:
+    qemu_img:
+      dest: "{{ vyos_vm.disk_path }}"
+      size: "{{ vyos_vm.disk_size | default('20G') }}"
+      format: qcow2
+      overwrite: true
+
+- name: Fix disk image ownership for libvirt
+  file:
+    path: "{{ vyos_vm.disk_path }}"
+    owner: libvirt-qemu
+    group: kvm
+    mode: '0644'
+
+- name: Create libvirt network configuration for WAN
+  community.libvirt.virt_net:
+    name: wan
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'wan_network.xml.j2') }}"
+
+- name: Create libvirt network configuration for LAN
+  community.libvirt.virt_net:
+    name: lan
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'lan_network.xml.j2') }}"
+
+- name: Start WAN network
+  community.libvirt.virt_net:
+    name: wan
+    state: active
+
+- name: Start LAN network
+  community.libvirt.virt_net:
+    name: lan
+    state: active
+
+
+- name: Create VyOS VM
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
+    autostart: yes
+
+- name: Start VyOS VM
+  community.libvirt.virt:
+    name: "{{ vyos_vm.name }}"
+    state: running
+
+- name: Include VLAN network setup
+  ansible.builtin.include_tasks: vlan_setup.yaml
+  when: vyos_enable_vlans | default(true)
+
+- name: Include VyOS configuration
+  ansible.builtin.include_tasks: vyos_config.yaml
+  when: vyos_configure_router | default(true) 

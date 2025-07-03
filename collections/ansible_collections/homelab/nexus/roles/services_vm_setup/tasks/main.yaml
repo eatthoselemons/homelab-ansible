@@ -1,0 +1,36 @@
+---
+- name: Create services VM disk image using qemu_img role
+  ansible.builtin.include_role:
+    name: stafwag.qemu_img
+  vars:
+    qemu_img_images:
+      - path: "{{ services_vm.disk_path }}"
+        size: "{{ services_vm.disk_size }}"
+        format: qcow2
+
+- name: Create services VM
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'services_vm.xml.j2') }}"
+    autostart: yes
+
+- name: Start services VM
+  community.libvirt.virt:
+    name: "{{ services_vm.name }}"
+    state: running
+
+- name: Wait for services VM to be accessible
+  ansible.builtin.wait_for:
+    port: "{{ services_ssh_port | default(2223) }}"
+    host: "{{ services_vm_ip | default('192.168.122.100') }}"
+    delay: 30
+    timeout: 300
+  when: services_vm_ip is defined
+
+- name: Include container runtime setup
+  ansible.builtin.include_tasks: container_setup.yaml
+  when: setup_containers | default(true)
+
+- name: Include services configuration
+  ansible.builtin.include_tasks: services_config.yaml
+  when: setup_containers | default(true) 

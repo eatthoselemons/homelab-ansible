@@ -1,0 +1,81 @@
+# VyOS Firewall Configuration for VLAN Segmentation
+# Apply this configuration in VyOS configure mode
+
+# Default firewall policies
+set firewall all-ping enable
+set firewall broadcast-ping disable
+set firewall config-trap disable
+set firewall ipv6-receive-redirects disable
+set firewall ipv6-src-route disable
+set firewall ip-src-route disable
+set firewall log-martians enable
+set firewall receive-redirects disable
+set firewall send-redirects enable
+set firewall source-validation disable
+set firewall syn-cookies enable
+set firewall twa-hazards-protection disable
+
+{% for vlan in vyos_vlan_networks %}
+# Firewall rules for VLAN {{ vlan.vlan_id }} ({{ vlan.name }})
+set firewall name VLAN{{ vlan.vlan_id }}_IN default-action drop
+set firewall name VLAN{{ vlan.vlan_id }}_IN description "{{ vlan.description }} inbound"
+
+# Allow established and related connections
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 10 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 10 state established enable
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 10 state related enable
+
+# Allow loopback
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 20 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 20 source address 127.0.0.0/8
+
+# Allow ping
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 30 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 30 protocol icmp
+
+{% if vlan.name == 'trusted-wifi' %}
+# Trusted WiFi can access Secure network
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 destination address 10.50.0.0/24
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 description "Allow access to Secure network"
+{% endif %}
+
+{% if vlan.name == 'secure' %}
+# Secure network can access Trusted WiFi
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 destination address 10.30.0.0/24
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 description "Allow access to Trusted WiFi"
+
+# Secure network can access Management via jumphost
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 110 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 110 destination address {{ vyos_jumphost_ip }}
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 110 description "Allow access to jumphost"
+{% endif %}
+
+{% if vlan.name == 'management' %}
+# Management network - only allow from jumphost
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 action accept
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 source address {{ vyos_jumphost_ip }}
+set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 description "Allow access from jumphost only"
+{% endif %}
+
+# Apply firewall to interface
+set interfaces ethernet eth1 vif {{ vlan.vlan_id }} firewall in name VLAN{{ vlan.vlan_id }}_IN
+
+{% endfor %}
+
+# WAN firewall rules
+set firewall name WAN_IN default-action drop
+set firewall name WAN_IN description "WAN inbound traffic"
+
+# Allow established and related
+set firewall name WAN_IN rule 10 action accept
+set firewall name WAN_IN rule 10 state established enable
+set firewall name WAN_IN rule 10 state related enable
+
+# Drop invalid packets
+set firewall name WAN_IN rule 20 action drop
+set firewall name WAN_IN rule 20 state invalid enable
+
+# Apply WAN firewall
+set interfaces ethernet eth0 firewall in name WAN_IN

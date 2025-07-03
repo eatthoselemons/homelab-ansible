@@ -1,0 +1,28 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    # Minimal OS setup required for testing
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install basic system packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - systemd
+        state: present
+
+    # Test basic system functionality - this scenario validates
+    # that the container environment is working correctly
+    - name: Verify system is functional
+      ansible.builtin.command:
+        cmd: systemctl --version
+      register: systemctl_result
+      changed_when: false
+
+    - name: Confirm test environment is ready
+      ansible.builtin.debug:
+        msg: "Default scenario - container environment validated (systemd {{ systemctl_result.stdout.split('\n')[0].split()[1] }})" 

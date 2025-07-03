@@ -1,0 +1,73 @@
+---
+- name: Install Docker dependencies
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-docker
+    state: present
+    update_cache: true
+
+- name: Add Docker GPG key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Start and enable Docker service
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user | default('user') }}"
+    groups: docker
+    append: true
+
+- name: Create services directory structure
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/services
+    - /opt/services/ipxe
+    - /opt/services/argocd
+    - /opt/services/dns
+    - /opt/services/dhcp
+    - /var/log/services
+
+- name: Create Docker network for services
+  community.docker.docker_network:
+    name: services-net
+    driver: bridge
+    ipam_config:
+      - subnet: "172.20.0.0/16"
+        gateway: "172.20.0.1"
+
+- name: Install Docker Compose for service orchestration
+  ansible.builtin.pip:
+    name:
+      - docker-compose
+    executable: pip3
