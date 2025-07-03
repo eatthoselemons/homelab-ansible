@@ -1,11 +1,7 @@
 ---
 # Ubuntu version: Edit ../.env.yml to change UBUNTU_VERSION and MOLECULE_DOCKER_IMAGE
-dependency:
-  name: galaxy
-  options:
-    requirements-file: requirements.yml
-driver:
-  name: docker
+# Shared configuration inherited from /.config/molecule/config.yml
+
 platforms:
   - name: security-test
     image: "${MOLECULE_DOCKER_IMAGE:-geerlingguy/docker-ubuntu2404-ansible:latest}"
@@ -19,19 +15,4 @@ platforms:
     capabilities:
       - "${MOLECULE_CAPABILITY_SYS_ADMIN:-SYS_ADMIN}"
     groups:
-      - "${MOLECULE_GROUP:-nexus}"
-provisioner:
-  name: ansible
-  config_options:
-    defaults:
-      callback_whitelist: profile_tasks
-      retry_files_enabled: false
-      host_key_checking: false
-      remote_tmp: /tmp/ansible
-  inventory:
-    group_vars:
-      all:
-        ansible_python_interpreter: /usr/bin/python3
-        ansible_connection: docker
-verifier:
-  name: ansible 
+      - "${MOLECULE_GROUP:-nexus}" 
