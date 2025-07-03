@@ -104,20 +104,38 @@ molecule converge -s vyos_setup
 # - systemd running in containers for service management
 # - stafwag.qemu_img role for disk image creation
 # - community.libvirt collection for VM and network management
+
 # Molecule Testing Configuration:
+# All molecule scenarios use centralized configuration management:
+# 
 # 1. Environment Variables (molecule/.env.yml):
+#    - UBUNTU_VERSION: "2404" 
+#    - MOLECULE_DOCKER_IMAGE: "geerlingguy/docker-ubuntu2404-ansible:latest"
+#    - All container configuration (volumes, capabilities, etc.)
 #    Usage: molecule -e molecule/.env.yml converge -s scenario_name
+# 
+# 2. Shared Base Configuration (/.config/molecule/config.yml):
+#    - Common provisioner, dependency, driver, and verifier settings
+#    - Reduces molecule.yml files from ~35 lines to ~18 lines each
+#    - Maintains consistent Ansible configuration across all scenarios
+# 
 # 3. Scenario-Specific Testing:
 #    - default: Basic container environment validation
 #    - security_hardening: Security role testing with auditd, UFW, fail2ban
 #    - vyos_setup: VyOS VM creation with libvirt in NAT mode
 #    - services_vm_setup: Services VM prerequisites and libvirt validation
 #    - harvester_test: Container networking validation for cluster testing
+# 
 # 4. Test Isolation Principles:
 #    - Each scenario gets fresh Docker container
 #    - No shared state between role tests
 #    - Role-specific prerequisites in individual converge.yml files
 #    - Independent failure domains prevent test contamination
+# 
+# 5. Version Management:
+#    - Update Ubuntu version: Edit UBUNTU_VERSION in molecule/.env.yml
+#    - Future versions (24.10, etc.): Change two variables instead of 5 files
+#    - Centralized control without logic sharing or test dependencies
 ```
 
 ## Repository Structure
