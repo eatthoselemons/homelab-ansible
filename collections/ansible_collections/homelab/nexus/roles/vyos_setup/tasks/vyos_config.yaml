@@ -7,43 +7,187 @@
     timeout: 300
   when: vyos_vm_ip is defined
 
-- name: Create VyOS configuration script
-  ansible.builtin.template:
-    src: vyos_bootstrap.sh.j2
-    dest: /tmp/vyos_bootstrap.sh
-    mode: '0755'
+- name: Configure VyOS physical interfaces
+  vyos.vyos.vyos_config:
+    lines:
+      - set interfaces ethernet eth0 description "WAN Interface"
+      - set interfaces ethernet eth0 hw-id auto
+      - set interfaces ethernet eth1 description "LAN Trunk Interface"
+      - set interfaces ethernet eth1 hw-id auto
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
 
-- name: Generate VyOS configuration for VLANs
-  ansible.builtin.template:
-    src: vyos_vlan_config.j2
-    dest: /tmp/vyos_vlan_config.txt
-    mode: '0644'
+- name: Configure WAN interface with DHCP
+  vyos.vyos.vyos_config:
+    lines:
+      - set interfaces ethernet eth0 address dhcp
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined and vyos_wan_dhcp | default(true)
 
-- name: Generate VyOS firewall configuration
-  ansible.builtin.template:
-    src: vyos_firewall_config.j2
-    dest: /tmp/vyos_firewall_config.txt
-    mode: '0644'
+- name: Configure VLAN interfaces
+  vyos.vyos.vyos_config:
+    lines:
+      - set interfaces ethernet eth1 vif {{ item.vlan_id }} description "{{ item.description }}"
+      - set interfaces ethernet eth1 vif {{ item.vlan_id }} address {{ item.gateway }}/{{ item.subnet.split('/')[1] }}
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and vyos_enable_vlans | default(true)
 
-- name: Generate VyOS DHCP configuration
-  ansible.builtin.template:
-    src: vyos_dhcp_config.j2
-    dest: /tmp/vyos_dhcp_config.txt
-    mode: '0644'
+- name: Configure DHCP server for VLANs
+  vyos.vyos.vyos_config:
+    lines:
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} default-router {{ item.gateway }}
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} name-server {{ vyos_dns_servers | join(' ') }}
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} domain-name {{ item.name }}.homelab.local
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} range vlan{{ item.vlan_id }} start {{ item.dhcp_range.split('-')[0] }}
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} range vlan{{ item.vlan_id }} stop {{ item.dhcp_range.split('-')[1] }}
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} lease 86400
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and item.dhcp_enabled | default(false)
 
-- name: Apply VyOS configuration (manual step)
-  ansible.builtin.debug:
-    msg: |
-      VyOS configuration files have been generated:
-      - /tmp/vyos_bootstrap.sh - Initial bootstrap script
-      - /tmp/vyos_vlan_config.txt - VLAN interface configuration
-      - /tmp/vyos_firewall_config.txt - Firewall rules
-      - /tmp/vyos_dhcp_config.txt - DHCP server configuration
-      
-      To apply these configurations:
-      1. SSH to VyOS: ssh vyos@{{ vyos_vm_ip | default('192.168.122.50') }} -p {{ vyos_ssh_port | default(2222) }}
-      2. Enter configuration mode: configure
-      3. Apply configurations from the generated files
-      4. Commit and save: commit && save
-      
-      Alternatively, use the vyos_command module with proper SSH key setup.
+- name: Configure NAT masquerading
+  vyos.vyos.vyos_config:
+    lines:
+      - set nat source rule 100 outbound-interface eth0
+      - set nat source rule 100 source address 10.0.0.0/8
+      - set nat source rule 100 translation address masquerade
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
+
+- name: Configure DNS forwarding
+  vyos.vyos.vyos_config:
+    lines:
+      - set service dns forwarding listen-address 127.0.0.1
+      - set service dns forwarding cache-size 1000
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
+
+- name: Configure DNS forwarding listen addresses for VLANs
+  vyos.vyos.vyos_config:
+    lines:
+      - set service dns forwarding listen-address {{ item.gateway }}
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and vyos_enable_vlans | default(true)
+
+- name: Configure DNS forwarding name servers
+  vyos.vyos.vyos_config:
+    lines:
+      - set service dns forwarding name-server {{ item }}
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_dns_servers }}"
+  when: vyos_vm_ip is defined
+
+- name: Configure NTP servers
+  vyos.vyos.vyos_config:
+    lines:
+      - set system ntp server {{ item }}
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_ntp_servers }}"
+  when: vyos_vm_ip is defined
+
+- name: Configure SSH service
+  vyos.vyos.vyos_config:
+    lines:
+      - set service ssh port {{ vyos_ssh_port | default(2222) }}
+      - set service ssh listen-address 0.0.0.0
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
+
+- name: Configure HTTPS web interface
+  vyos.vyos.vyos_config:
+    lines:
+      - set service https listen-address 0.0.0.0
+      - set service https port {{ vyos_web_port | default(443) }}
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
+
+- name: Configure basic firewall settings
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall all-ping enable
+      - set firewall broadcast-ping disable
+      - set firewall config-trap disable
+      - set firewall ipv6-receive-redirects disable
+      - set firewall ipv6-src-route disable
+      - set firewall ip-src-route disable
+      - set firewall log-martians enable
+      - set firewall receive-redirects disable
+      - set firewall send-redirects enable
+      - set firewall source-validation disable
+      - set firewall syn-cookies enable
+      - set firewall twa-hazards-protection disable
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
+
+- name: Configure VyOS save configuration
+  vyos.vyos.vyos_config:
+    save: true
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined

@@ -1,0 +1,73 @@
+---
+- name: Generate SSH key pair for VyOS access
+  openssh_keypair:
+    path: /tmp/vyos_key
+    type: rsa
+    size: 2048
+    force: false
+  delegate_to: localhost
+
+- name: Wait for VyOS SSH to be available
+  ansible.builtin.wait_for:
+    port: "{{ vyos_ssh_port | default(2222) }}"
+    host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    delay: 30
+    timeout: 300
+  when: vyos_vm_ip is defined
+
+- name: Check if VyOS is accessible with default credentials
+  ansible.builtin.uri:
+    url: "https://{{ vyos_vm_ip | default('192.168.122.50') }}:{{ vyos_web_port | default(443) }}"
+    method: GET
+    validate_certs: false
+    timeout: 10
+  register: vyos_web_check
+  ignore_errors: true
+  when: vyos_vm_ip is defined
+
+- name: Create VyOS user and configure SSH key
+  vyos.vyos.vyos_config:
+    lines:
+      - set system login user vyos authentication public-keys ansible key "{{ lookup('file', '/tmp/vyos_key.pub') }}"
+      - set system login user vyos authentication public-keys ansible type ssh-rsa
+      - set system login user vyos level admin
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_password: vyos
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  when: vyos_vm_ip is defined
+  ignore_errors: true
+
+- name: Set VyOS admin password
+  vyos.vyos.vyos_config:
+    lines:
+      - set system login user vyos authentication plaintext-password "{{ vyos_admin_password | default('admin123') }}"
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_password: vyos
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  when: vyos_vm_ip is defined
+  ignore_errors: true
+
+- name: Test SSH connection with key
+  ansible.builtin.command:
+    cmd: ssh -i /tmp/vyos_key -o StrictHostKeyChecking=no -p {{ vyos_ssh_port | default(2222) }} vyos@{{ vyos_vm_ip | default('192.168.122.50') }} 'show version'
+  register: ssh_test
+  ignore_errors: true
+  when: vyos_vm_ip is defined
+
+- name: Display SSH key setup status
+  ansible.builtin.debug:
+    msg: |
+      SSH key setup completed. Status: {{ 'SUCCESS' if ssh_test.rc == 0 else 'FAILED' }}
+      SSH key location: /tmp/vyos_key
+      Connection command: ssh -i /tmp/vyos_key vyos@{{ vyos_vm_ip | default('192.168.122.50') }} -p {{ vyos_ssh_port | default(2222) }}
+  when: vyos_vm_ip is defined

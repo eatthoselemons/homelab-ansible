@@ -81,6 +81,14 @@
   ansible.builtin.include_tasks: vlan_setup.yaml
   when: vyos_enable_vlans | default(true)
 
+- name: Include VyOS SSH setup
+  ansible.builtin.include_tasks: vyos_ssh_setup.yaml
+  when: vyos_configure_router | default(true)
+
 - name: Include VyOS configuration
   ansible.builtin.include_tasks: vyos_config.yaml
+  when: vyos_configure_router | default(true)
+
+- name: Include VyOS firewall configuration
+  ansible.builtin.include_tasks: vyos_firewall.yaml
   when: vyos_configure_router | default(true) 

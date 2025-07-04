@@ -1,0 +1,101 @@
+---
+- name: Configure VLAN firewall rules
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall name VLAN{{ item.vlan_id }}_IN default-action drop
+      - set firewall name VLAN{{ item.vlan_id }}_IN description "{{ item.description }} inbound"
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 10 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 10 state established enable
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 10 state related enable
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 20 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 20 source address 127.0.0.0/8
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 30 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 30 protocol icmp
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and vyos_enable_vlans | default(true)
+
+- name: Configure trusted WiFi access to secure network
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 destination address 10.50.0.0/24
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 description "Allow access to Secure network"
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and item.name == 'trusted-wifi'
+
+- name: Configure secure network access rules
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 destination address 10.30.0.0/24
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 description "Allow access to Trusted WiFi"
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 110 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 110 destination address {{ vyos_jumphost_ip }}
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 110 description "Allow access to jumphost"
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and item.name == 'secure'
+
+- name: Configure management network access rules
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 action accept
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 source address {{ vyos_jumphost_ip }}
+      - set firewall name VLAN{{ item.vlan_id }}_IN rule 100 description "Allow access from jumphost only"
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and item.name == 'management'
+
+- name: Apply firewall to VLAN interfaces
+  vyos.vyos.vyos_config:
+    lines:
+      - set interfaces ethernet eth1 vif {{ item.vlan_id }} firewall in name VLAN{{ item.vlan_id }}_IN
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and vyos_enable_vlans | default(true)
+
+- name: Configure WAN firewall rules
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall name WAN_IN default-action drop
+      - set firewall name WAN_IN description "WAN inbound traffic"
+      - set firewall name WAN_IN rule 10 action accept
+      - set firewall name WAN_IN rule 10 state established enable
+      - set firewall name WAN_IN rule 10 state related enable
+      - set firewall name WAN_IN rule 20 action drop
+      - set firewall name WAN_IN rule 20 state invalid enable
+      - set interfaces ethernet eth0 firewall in name WAN_IN
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
