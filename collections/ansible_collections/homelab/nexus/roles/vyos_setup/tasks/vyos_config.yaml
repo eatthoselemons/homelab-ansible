@@ -132,11 +132,11 @@
   loop: "{{ vyos_ntp_servers }}"
   when: vyos_vm_ip is defined
 
-- name: Configure SSH service
+- name: Configure SSH service on management interface
   vyos.vyos.vyos_config:
     lines:
       - set service ssh port {{ vyos_ssh_port | default(2222) }}
-      - set service ssh listen-address 0.0.0.0
+      - set service ssh listen-address {{ vyos_vm_ip }}
   vars:
     ansible_network_os: vyos
     ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
@@ -144,6 +144,19 @@
     ansible_user: vyos
     ansible_connection: ansible.netcommon.network_cli
   when: vyos_vm_ip is defined
+
+- name: Configure SSH service on VLAN gateway addresses
+  vyos.vyos.vyos_config:
+    lines:
+      - set service ssh listen-address {{ item.gateway }}
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and vyos_enable_vlans | default(true) and item.name in ['secure', 'management']
 
 - name: Configure HTTPS web interface on management interface
   vyos.vyos.vyos_config:

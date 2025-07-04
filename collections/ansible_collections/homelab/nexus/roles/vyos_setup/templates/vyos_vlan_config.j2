@@ -48,10 +48,6 @@ set service dns forwarding cache-size 1000
 set system ntp server {{ ntp }}
 {% endfor %}
 
-# SSH Configuration
-set service ssh port {{ vyos_ssh_port }}
-set service ssh listen-address 0.0.0.0
+# SSH Configuration - configured via ansible tasks with restricted access
 
-# Web Interface
-set service https listen-address 0.0.0.0
-set service https port {{ vyos_web_port }}
+# Web Interface - configured via ansible tasks with restricted access

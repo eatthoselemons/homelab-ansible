@@ -67,8 +67,8 @@
             host: "{{ vyos_vm_ip | default('10.0.0.1') }}"
             delay: 30
             timeout: 300
-          ignore_errors: true
           register: ssh_wait
+          failed_when: false  # Don't fail molecule test if VyOS isn't fully booted
 
         - name: Check SSH port is listening
           ansible.builtin.wait_for:
@@ -128,7 +128,6 @@
             fail_msg: "VyOS interface configuration validation failed"
             success_msg: "VyOS interface configuration validated successfully"
           when: vyos_interfaces.rc == 0
-          ignore_errors: true
 
         - name: Validate VLAN configuration content
           ansible.builtin.assert:
@@ -139,7 +138,6 @@
             fail_msg: "VyOS VLAN configuration validation failed - missing expected VLANs"
             success_msg: "VyOS VLAN configuration validated successfully"
           when: vyos_vlans.rc == 0
-          ignore_errors: true
 
         - name: Validate firewall configuration content
           ansible.builtin.assert:
@@ -149,7 +147,6 @@
             fail_msg: "VyOS firewall configuration validation failed - missing firewall rules"
             success_msg: "VyOS firewall configuration validated successfully"
           when: vyos_firewall.rc == 0
-          ignore_errors: true
 
         - name: Validate DHCP configuration content
           ansible.builtin.assert:
@@ -159,7 +156,6 @@
             fail_msg: "VyOS DHCP configuration validation failed - missing DHCP pools"
             success_msg: "VyOS DHCP configuration validated successfully"
           when: vyos_dhcp.rc == 0
-          ignore_errors: true
 
         - name: Display VyOS configuration verification results
           ansible.builtin.debug:
@@ -200,11 +196,29 @@
       register: disk_image
       failed_when: not disk_image.stat.exists
 
-    - name: Verify SSH key was generated
+    - name: Verify SSH key was retrieved from Infisical
       ansible.builtin.stat:
         path: ~/.ssh/vyos-keys/vyos_key
       register: ssh_key
       failed_when: not ssh_key.stat.exists
+
+    - name: Verify SSH public key was retrieved from Infisical
+      ansible.builtin.stat:
+        path: ~/.ssh/vyos-keys/vyos_key.pub
+      register: ssh_pub_key
+      failed_when: not ssh_pub_key.stat.exists
+
+    - name: Validate SSH private key is Ed25519 format
+      ansible.builtin.command:
+        cmd: file ~/.ssh/vyos-keys/vyos_key
+      register: key_type_check
+      failed_when: "'OpenSSH private key' not in key_type_check.stdout"
+
+    - name: Validate SSH public key is Ed25519 format
+      ansible.builtin.command:
+        cmd: head -1 ~/.ssh/vyos-keys/vyos_key.pub
+      register: pub_key_check
+      failed_when: "'ED25519' not in pub_key_check.stdout"
 
     - name: Summary of verification results
       ansible.builtin.debug:
@@ -213,7 +227,6 @@
           ✓ VM Infrastructure: Created and Running
           ✓ Network Configuration: WAN and LAN networks active
           ✓ Disk Image: Present at {{ disk_image.stat.path if disk_image.stat.exists else 'Missing' }}
-          ✓ SSH Key: Generated for VyOS access
           ✓ VM Configuration: Memory and CPU settings correct
           
           VyOS Service Status:

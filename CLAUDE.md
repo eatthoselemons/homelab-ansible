@@ -239,9 +239,34 @@ vars:
 - Logical separation improves maintainability and testing
 
 **Error Handling:**
-- Use `ignore_errors: true` for SSH connectivity tests
 - Implement proper `when` conditions for configuration tasks
 - Use `rescue` blocks for graceful failure handling
+- Use specific error conditions with `failed_when` for better debugging
+
+### Domain Architecture
+
+**Domain Hierarchy:**
+- **Primary Domain**: `awynn.info`
+- **Public Services**: `<service>.public.awynn.info` - Internet-facing services
+- **Private Services**: `<service>.private.awynn.info` - Internal network services
+
+**VLAN Domain Assignment:**
+- DMZ: `<hostname>.dmz.private.awynn.info`
+- Untrusted WiFi: `<hostname>.untrusted-wifi.private.awynn.info`
+- Trusted WiFi: `<hostname>.trusted-wifi.private.awynn.info`
+- IoT: `<hostname>.iot.private.awynn.info`
+- Secure: `<hostname>.secure.private.awynn.info`
+- Management: `<hostname>.management.private.awynn.info`
+- Logging: `<hostname>.logging.private.awynn.info`
+
+**Service Examples:**
+- Public: `web.public.awynn.info`, `mail.public.awynn.info`
+- Private: `router.management.private.awynn.info`, `nas.secure.private.awynn.info`
+
+**DNS Configuration:**
+- DHCP clients receive appropriate subdomain based on VLAN
+- VyOS provides DNS forwarding to upstream servers (1.1.1.1, 1.0.0.1)
+- Internal DNS resolution for private subdomains
 
 ## Key Integration Points
 
