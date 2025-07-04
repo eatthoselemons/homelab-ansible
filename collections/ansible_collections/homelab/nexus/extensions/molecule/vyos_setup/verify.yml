@@ -66,17 +66,21 @@
             port: "{{ vyos_ssh_port }}"
             host: "{{ vyos_vm_ip | default('10.0.0.1') }}"
             delay: 30
-            timeout: 300
+            timeout: 60
           register: ssh_wait
-          failed_when: false  # Don't fail molecule test if VyOS isn't fully booted
+          retries: 3
+          delay: 10
+          until: ssh_wait is not failed
 
         - name: Check SSH port is listening
           ansible.builtin.wait_for:
             port: "{{ vyos_ssh_port }}"
             host: "{{ vyos_vm_ip | default('10.0.0.1') }}"
-            timeout: 5
+            timeout: 10
           register: ssh_port_check
-          ignore_errors: true
+          retries: 5
+          delay: 5
+          until: ssh_port_check is not failed
 
         - name: Display SSH accessibility status
           ansible.builtin.debug:
@@ -93,7 +97,10 @@
               ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
               vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show interfaces'
           register: vyos_interfaces
-          ignore_errors: true
+          retries: 3
+          delay: 15
+          until: vyos_interfaces.rc == 0
+          ignore_errors: true  # Don't fail molecule test in container environments
 
         - name: Test VyOS VLAN configuration
           ansible.builtin.command:
@@ -101,7 +108,10 @@
               ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
               vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show interfaces ethernet eth1 vif'
           register: vyos_vlans
-          ignore_errors: true
+          retries: 3
+          delay: 10
+          until: vyos_vlans.rc == 0
+          ignore_errors: true  # Don't fail molecule test in container environments
 
         - name: Test VyOS firewall configuration
           ansible.builtin.command:
@@ -109,7 +119,10 @@
               ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
               vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show firewall'
           register: vyos_firewall
-          ignore_errors: true
+          retries: 3
+          delay: 10
+          until: vyos_firewall.rc == 0
+          ignore_errors: true  # Don't fail molecule test in container environments
 
         - name: Test VyOS DHCP configuration
           ansible.builtin.command:
@@ -117,7 +130,10 @@
               ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
               vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show service dhcp-server'
           register: vyos_dhcp
-          ignore_errors: true
+          retries: 3
+          delay: 10
+          until: vyos_dhcp.rc == 0
+          ignore_errors: true  # Don't fail molecule test in container environments
 
         - name: Validate interface configuration content
           ansible.builtin.assert:
