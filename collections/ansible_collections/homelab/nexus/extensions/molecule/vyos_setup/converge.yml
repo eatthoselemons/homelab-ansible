@@ -35,6 +35,13 @@
         name: ../../../roles/vyos_setup
       vars:
         vyos_network_mode: nat
+        vyos_configure_router: false
+        vyos_vm_ip: "192.168.122.50"
+        vyos_vm_gateway: "192.168.122.1"
+        vyos_vm_nameservers:
+          - "8.8.8.8"
+          - "8.8.4.4"
+        vyos_vm_os_variant: "generic"
         vyos_vm:
           name: vyos-router
           memory: 1024

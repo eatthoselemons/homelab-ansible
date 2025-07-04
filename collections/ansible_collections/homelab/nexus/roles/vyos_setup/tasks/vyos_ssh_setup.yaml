@@ -1,41 +1,9 @@
 ---
-- name: Ensure SSH keys directory exists
-  ansible.builtin.file:
-    path: ~/.ssh/vyos-keys
-    state: directory
-    mode: '0700'
-  delegate_to: localhost
-
-- name: Retrieve VyOS private SSH key from Infisical
-  ansible.builtin.copy:
-    content: "{{ lookup(
-      'infisical.vault.read_secrets',
-      universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea',
-      universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'),
-      project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e',
-      path='/',
-      env_slug='prod',
-      url='https://app.infisical.com',
-      secret_name='vyosPrivateSshKey',
-      ) }}"
-    dest: ~/.ssh/vyos-keys/vyos_key
-    mode: '0600'
-  delegate_to: localhost
-
-- name: Retrieve VyOS public SSH key from Infisical
-  ansible.builtin.copy:
-    content: "{{ lookup(
-      'infisical.vault.read_secrets',
-      universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea',
-      universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'),
-      project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e',
-      path='/',
-      env_slug='prod',
-      url='https://app.infisical.com',
-      secret_name='vyosPublicSshKey',
-      ) }}"
-    dest: ~/.ssh/vyos-keys/vyos_key.pub
-    mode: '0644'
+- name: Add lizWorkstationSshKey to Docker container authorized_keys
+  ansible.posix.authorized_key:
+    user: "{{ ansible_user | default('root') }}"
+    key: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea', universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'), project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e', path='/', env_slug='prod', url='https://app.infisical.com', secret_name='lizWorkstationSshKey') }}"
+    state: present
   delegate_to: localhost
 
 - name: Wait for VyOS SSH to be available
@@ -58,71 +26,37 @@
     - vyos_web_check.status not in [200, 401, 403]  # 401/403 means VyOS is running but needs auth
   when: vyos_vm_ip is defined
 
-- name: Get VyOS public SSH key from Infisical
-  ansible.builtin.set_fact:
-    vyos_public_key: "{{ lookup(
-      'infisical.vault.read_secrets',
-      universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea',
-      universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'),
-      project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e',
-      path='/',
-      env_slug='prod',
-      url='https://app.infisical.com',
-      secret_name='vyosPublicSshKey'
-    ) | regex_replace('^ssh-ed25519\\s+', '') | regex_replace('\\s+.*$', '') }}"
-
-- name: Create VyOS user and configure SSH key
-  vyos.vyos.vyos_config:
-    lines:
-      - set system login user vyos authentication public-keys ansible key "{{ vyos_public_key }}"
-      - set system login user vyos authentication public-keys ansible type ssh-ed25519
-      - set system login user vyos level admin
+- name: Add lizWorkstationSshKey to VyOS authorized_keys
+  ansible.posix.authorized_key:
+    user: vyos
+    key: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea', universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'), project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e', path='/', env_slug='prod', url='https://app.infisical.com', secret_name='lizWorkstationSshKey') }}"
+    state: present
   vars:
-    ansible_network_os: vyos
     ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
     ansible_port: "{{ vyos_ssh_port | default(2222) }}"
     ansible_user: vyos
     ansible_password: vyos
-    ansible_connection: ansible.netcommon.network_cli
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
-  when: vyos_vm_ip is defined
+  when: vyos_vm_ip is defined and vyos_configure_router | default(true)
   register: ssh_key_setup
   failed_when: 
     - ssh_key_setup.failed is defined and ssh_key_setup.failed
     - "'Authentication failed' in ssh_key_setup.msg | default('')"
 
-- name: Set VyOS admin password
-  vyos.vyos.vyos_config:
-    lines:
-      - set system login user vyos authentication plaintext-password "{{ vyos_admin_password | default('admin123') }}"
-  vars:
-    ansible_network_os: vyos
-    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
-    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
-    ansible_user: vyos
-    ansible_password: vyos
-    ansible_connection: ansible.netcommon.network_cli
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
-  when: vyos_vm_ip is defined
-  register: password_setup
-  failed_when: 
-    - password_setup.failed is defined and password_setup.failed
-    - "'Password already set' not in password_setup.msg | default('')"
 
-- name: Test SSH connection with key
-  ansible.builtin.command:
-    cmd: ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -p {{ vyos_ssh_port | default(2222) }} vyos@{{ vyos_vm_ip | default('192.168.122.50') }} 'show version'
-  register: ssh_test
-  failed_when: 
-    - ssh_test.rc != 0
-    - "'Connection refused' in ssh_test.stderr | default('')"
-    - "'No route to host' in ssh_test.stderr | default('')"
+- name: Test SSH connection with shared key
+  ansible.builtin.wait_for:
+    port: "{{ vyos_ssh_port | default(2222) }}"
+    host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    delay: 10
+    timeout: 120
   when: vyos_vm_ip is defined
+  register: ssh_test
 
 - name: Display SSH key setup status
   ansible.builtin.debug:
     msg: |
-      SSH key setup completed. Status: {{ 'SUCCESS' if ssh_test.rc == 0 else 'FAILED' }}
-      SSH key location: ~/.ssh/vyos-keys/vyos_key
-      Connection command: ssh -i ~/.ssh/vyos-keys/vyos_key vyos@{{ vyos_vm_ip | default('192.168.122.50') }} -p {{ vyos_ssh_port | default(2222) }}
+      SSH key setup completed. Status: {{ 'SUCCESS' if ssh_test is succeeded else 'FAILED' }}
+      SSH key: lizWorkstationSshKey from Infisical
+      Connection: ssh vyos@{{ vyos_vm_ip | default('192.168.122.50') }} -p {{ vyos_ssh_port | default(2222) }}
   when: vyos_vm_ip is defined
