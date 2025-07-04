@@ -2,6 +2,7 @@
 roles:
   - name: stafwag.qemu_img
   - name: stafwag.delegated_vm_install
+  - name: stafwag.virt_install_vm
 
 collections:
   - name: community.general

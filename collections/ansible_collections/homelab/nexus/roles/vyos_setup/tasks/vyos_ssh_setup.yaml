@@ -1,18 +1,26 @@
 ---
-- name: Add lizWorkstationSshKey to Docker container authorized_keys
+- name: Add test SSH key to Docker container authorized_keys (molecule test)
+  ansible.posix.authorized_key:
+    user: "{{ ansible_user_id }}"
+    key: "{{ test_ssh_key }}"
+    state: present
+  when: vyos_network_mode == 'nat' and test_ssh_key is defined
+  
+- name: Add lizWorkstationSshKey to Docker container authorized_keys (production)
   ansible.posix.authorized_key:
     user: "{{ ansible_user | default('root') }}"
     key: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea', universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'), project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e', path='/', env_slug='prod', url='https://app.infisical.com', secret_name='lizWorkstationSshKey') }}"
     state: present
   delegate_to: localhost
+  when: vyos_network_mode == 'nat' and test_ssh_key is not defined
 
 - name: Wait for VyOS SSH to be available
   ansible.builtin.wait_for:
     port: "{{ vyos_ssh_port | default(2222) }}"
     host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
-    delay: 30
-    timeout: 300
-  when: vyos_vm_ip is defined
+    delay: 10
+    timeout: 120
+  when: vyos_vm_ip is defined or vyos_network_mode == 'nat'
 
 - name: Check if VyOS web interface is accessible
   ansible.builtin.uri:
@@ -24,9 +32,26 @@
   failed_when: 
     - vyos_web_check.status is defined
     - vyos_web_check.status not in [200, 401, 403]  # 401/403 means VyOS is running but needs auth
-  when: vyos_vm_ip is defined
+  when: (vyos_vm_ip is defined or vyos_network_mode == 'nat') and vyos_configure_router | default(true)
 
-- name: Add lizWorkstationSshKey to VyOS authorized_keys
+- name: Add test SSH key to VyOS authorized_keys (molecule test)
+  ansible.posix.authorized_key:
+    user: vyos
+    key: "{{ test_ssh_key }}"
+    state: present
+  vars:
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_password: vyos
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  when: (vyos_vm_ip is defined or vyos_network_mode == 'nat') and test_ssh_key is defined
+  register: ssh_key_setup
+  failed_when: 
+    - ssh_key_setup.failed is defined and ssh_key_setup.failed
+    - "'Authentication failed' in ssh_key_setup.msg | default('')"
+
+- name: Add lizWorkstationSshKey to VyOS authorized_keys (production)
   ansible.posix.authorized_key:
     user: vyos
     key: "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea', universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'), project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e', path='/', env_slug='prod', url='https://app.infisical.com', secret_name='lizWorkstationSshKey') }}"
@@ -37,7 +62,7 @@
     ansible_user: vyos
     ansible_password: vyos
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
-  when: vyos_vm_ip is defined and vyos_configure_router | default(true)
+  when: (vyos_vm_ip is defined or vyos_network_mode == 'nat') and vyos_configure_router | default(true) and test_ssh_key is not defined
   register: ssh_key_setup
   failed_when: 
     - ssh_key_setup.failed is defined and ssh_key_setup.failed
@@ -48,15 +73,15 @@
   ansible.builtin.wait_for:
     port: "{{ vyos_ssh_port | default(2222) }}"
     host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
-    delay: 10
-    timeout: 120
-  when: vyos_vm_ip is defined
+    delay: 5
+    timeout: 60
+  when: vyos_vm_ip is defined or vyos_network_mode == 'nat'
   register: ssh_test
 
 - name: Display SSH key setup status
   ansible.builtin.debug:
     msg: |
       SSH key setup completed. Status: {{ 'SUCCESS' if ssh_test is succeeded else 'FAILED' }}
-      SSH key: lizWorkstationSshKey from Infisical
+      SSH key: {{ 'Test key' if test_ssh_key is defined else 'lizWorkstationSshKey from Infisical' }}
       Connection: ssh vyos@{{ vyos_vm_ip | default('192.168.122.50') }} -p {{ vyos_ssh_port | default(2222) }}
-  when: vyos_vm_ip is defined
+  when: vyos_vm_ip is defined or vyos_network_mode == 'nat'

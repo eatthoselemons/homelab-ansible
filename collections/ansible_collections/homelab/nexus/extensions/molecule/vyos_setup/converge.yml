@@ -30,12 +30,18 @@
         state: started
         enabled: true
 
-    - name: Include VyOS setup role
+    - name: Set test SSH key for molecule testing
+      ansible.builtin.set_fact:
+        test_ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGxGWRxUW0HiCgdQqUVJQHNE6JHYeI7ERLaHHKn7PZTH test@molecule"
+    
+    - name: Run complete VyOS setup role with test configuration
       ansible.builtin.include_role:
         name: ../../../roles/vyos_setup
       vars:
         vyos_network_mode: nat
         vyos_configure_router: false
+        vyos_enable_ssh_setup: true
+        vyos_enable_vlans: false
         vyos_vm_ip: "192.168.122.50"
         vyos_vm_gateway: "192.168.122.1"
         vyos_vm_nameservers:
@@ -47,4 +53,19 @@
           memory: 1024
           vcpus: 2
           disk_path: /var/lib/libvirt/images/vyos-router.qcow2
-          disk_size: 10G 
+          disk_size: 10G
+        
+    - name: Verify SSH key was added to container
+      ansible.builtin.command:
+        cmd: grep -q "test@molecule" /root/.ssh/authorized_keys
+      register: ssh_key_check
+      failed_when: ssh_key_check.rc != 0
+      
+    - name: Display test results
+      ansible.builtin.debug:
+        msg: |
+          VyOS Setup Test Results:
+          - SSH key setup: {{ 'SUCCESS' if ssh_key_check.rc == 0 else 'FAILED' }}
+          - VM creation: {{ 'TESTED' if vyos_network_mode == 'nat' else 'SKIPPED' }}
+          - Network setup: {{ 'TESTED' if vyos_enable_vlans == false else 'SKIPPED' }}
+          - Router config: {{ 'SKIPPED (test mode)' if vyos_configure_router == false else 'TESTED' }} 

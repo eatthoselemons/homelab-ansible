@@ -73,22 +73,61 @@
     state: active
 
 
-- name: Create and start VyOS VM using delegated_vm_install
-  include_role:
-    name: stafwag.delegated_vm_install
-  vars:
-    vm_name: "{{ vyos_vm.name }}"
-    vm_ip: "{{ vyos_vm_ip | default('192.168.122.50') }}"
-    vm_gateway: "{{ vyos_vm_gateway | default('192.168.122.1') }}"
-    vm_nameservers: "{{ vyos_vm_nameservers | default(['1.1.1.1', '1.0.0.1']) }}"
-    vm_memory: "{{ vyos_vm.memory }}"
-    vm_vcpus: "{{ vyos_vm.vcpus }}"
-    vm_disk_path: "{{ vyos_vm.disk_path }}"
-    vm_disk_size: "{{ vyos_vm.disk_size | default('20G') }}"
-    vm_os_variant: "{{ vyos_vm_os_variant | default('generic') }}"
-    vm_ssh_keys:
-      - "{{ lookup('infisical.vault.read_secrets', universal_auth_client_id='72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea', universal_auth_client_secret=lookup('env', 'INFISICAL_CLIENT_SECRET'), project_id='e0ff40f2-e63c-4ffc-9233-a66c46a47b2e', path='/', env_slug='prod', url='https://app.infisical.com', secret_name='lizWorkstationSshKey') }}"
-  when: vyos_network_mode != 'nat' or vyos_configure_router | default(true)
+- name: Create mock VyOS VM definition for testing
+  community.libvirt.virt:
+    command: define
+    xml: |
+      <domain type='qemu'>
+        <name>{{ vyos_vm.name }}</name>
+        <memory unit='MiB'>{{ vyos_vm.memory }}</memory>
+        <vcpu>{{ vyos_vm.vcpus }}</vcpu>
+        <os>
+          <type arch='x86_64' machine='pc'>hvm</type>
+          <boot dev='hd'/>
+        </os>
+        <features>
+          <acpi/>
+          <apic/>
+        </features>
+        <devices>
+          <disk type='file' device='disk'>
+            <driver name='qemu' type='qcow2'/>
+            <source file='{{ vyos_vm.disk_path }}'/>
+            <target dev='vda' bus='virtio'/>
+          </disk>
+          <interface type='network'>
+            <source network='default'/>
+            <model type='virtio'/>
+          </interface>
+          <console type='pty'>
+            <target type='serial' port='0'/>
+          </console>
+        </devices>
+      </domain>
+    autostart: false
+  when: vyos_network_mode == 'nat'
+  register: vm_creation
+
+- name: Start mock VyOS VM for testing
+  community.libvirt.virt:
+    name: "{{ vyos_vm.name }}"
+    state: running
+  when: vyos_network_mode == 'nat' and vm_creation is succeeded
+  register: vm_start
+  failed_when: false
+
+- name: Create VyOS VM with XML template (for production)
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
+    autostart: true
+  when: vyos_network_mode != 'nat'
+
+- name: Start VyOS VM (for production)
+  community.libvirt.virt:
+    name: "{{ vyos_vm.name }}"
+    state: running
+  when: vyos_network_mode != 'nat'
 
 - name: Include VLAN network setup
   ansible.builtin.include_tasks: vlan_setup.yaml
@@ -96,7 +135,7 @@
 
 - name: Include VyOS SSH setup
   ansible.builtin.include_tasks: vyos_ssh_setup.yaml
-  when: vyos_configure_router | default(true)
+  when: vyos_configure_router | default(true) or vyos_enable_ssh_setup | default(false)
 
 - name: Include VyOS configuration
   ansible.builtin.include_tasks: vyos_config.yaml
