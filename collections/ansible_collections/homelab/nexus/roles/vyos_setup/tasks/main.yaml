@@ -1,4 +1,9 @@
 ---
+- name: Load ports configuration
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/../../vars/ports.yaml"
+    name: ports
+
 - name: Install required packages
   apt:
     name:

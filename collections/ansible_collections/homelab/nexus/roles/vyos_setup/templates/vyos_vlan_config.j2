@@ -20,7 +20,7 @@ set interfaces ethernet eth1 vif {{ vlan.vlan_id }} address {{ vlan.gateway }}/{
 # DHCP for VLAN {{ vlan.vlan_id }}
 set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} default-router {{ vlan.gateway }}
 set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} name-server {{ vyos_dns_servers | join(' ') }}
-set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} domain-name {{ vlan.name }}.homelab.local
+set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} domain-name {{ vlan.name }}.{{ vyos_private_domain }}
 set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} range vlan{{ vlan.vlan_id }} start {{ vlan.dhcp_range.split('-')[0] }}
 set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} range vlan{{ vlan.vlan_id }} stop {{ vlan.dhcp_range.split('-')[1] }}
 set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} lease 86400

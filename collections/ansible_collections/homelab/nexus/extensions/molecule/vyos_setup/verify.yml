@@ -1,6 +1,8 @@
 ---
 - name: Verify VyOS Setup
   hosts: all
+  vars_files:
+    - ../../../vars/ports.yaml
   tasks:
     - name: Verify VyOS VM infrastructure
       block:
@@ -61,8 +63,8 @@
       block:
         - name: Wait for VyOS SSH to be available
           ansible.builtin.wait_for:
-            port: 2222
-            host: 192.168.122.50
+            port: "{{ vyos_ssh_port }}"
+            host: "{{ vyos_vm_ip | default('10.0.0.1') }}"
             delay: 30
             timeout: 300
           ignore_errors: true
@@ -70,8 +72,8 @@
 
         - name: Check SSH port is listening
           ansible.builtin.wait_for:
-            port: 2222
-            host: 192.168.122.50
+            port: "{{ vyos_ssh_port }}"
+            host: "{{ vyos_vm_ip | default('10.0.0.1') }}"
             timeout: 5
           register: ssh_port_check
           ignore_errors: true
@@ -81,40 +83,82 @@
             msg: |
               SSH Wait Result: {{ 'TIMEOUT' if ssh_wait.failed | default(false) else 'SUCCESS' }}
               SSH Port Check: {{ 'OPEN' if not ssh_port_check.failed | default(true) else 'CLOSED' }}
-              VyOS should be accessible on port 2222
+              VyOS should be accessible at {{ vyos_vm_ip | default('10.0.0.1') }}:{{ vyos_ssh_port }}
 
     - name: Verify VyOS configuration (when accessible)
       block:
         - name: Test VyOS configuration via SSH
           ansible.builtin.command:
             cmd: >
-              ssh -i /tmp/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
-              vyos@192.168.122.50 -p 2222 'show interfaces'
+              ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
+              vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show interfaces'
           register: vyos_interfaces
           ignore_errors: true
 
         - name: Test VyOS VLAN configuration
           ansible.builtin.command:
             cmd: >
-              ssh -i /tmp/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
-              vyos@192.168.122.50 -p 2222 'show interfaces ethernet eth1 vif'
+              ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
+              vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show interfaces ethernet eth1 vif'
           register: vyos_vlans
           ignore_errors: true
 
         - name: Test VyOS firewall configuration
           ansible.builtin.command:
             cmd: >
-              ssh -i /tmp/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
-              vyos@192.168.122.50 -p 2222 'show firewall'
+              ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
+              vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show firewall'
           register: vyos_firewall
           ignore_errors: true
 
         - name: Test VyOS DHCP configuration
           ansible.builtin.command:
             cmd: >
-              ssh -i /tmp/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
-              vyos@192.168.122.50 -p 2222 'show service dhcp-server'
+              ssh -i ~/.ssh/vyos-keys/vyos_key -o StrictHostKeyChecking=no -o ConnectTimeout=10
+              vyos@{{ vyos_vm_ip | default('10.0.0.1') }} -p {{ vyos_ssh_port }} 'show service dhcp-server'
           register: vyos_dhcp
+          ignore_errors: true
+
+        - name: Validate interface configuration content
+          ansible.builtin.assert:
+            that:
+              - vyos_interfaces.rc == 0
+              - "'eth0' in vyos_interfaces.stdout"
+              - "'eth1' in vyos_interfaces.stdout"
+            fail_msg: "VyOS interface configuration validation failed"
+            success_msg: "VyOS interface configuration validated successfully"
+          when: vyos_interfaces.rc == 0
+          ignore_errors: true
+
+        - name: Validate VLAN configuration content
+          ansible.builtin.assert:
+            that:
+              - vyos_vlans.rc == 0
+              - "'vif 10' in vyos_vlans.stdout or 'dmz' in vyos_vlans.stdout"
+              - "'vif 50' in vyos_vlans.stdout or 'secure' in vyos_vlans.stdout"
+            fail_msg: "VyOS VLAN configuration validation failed - missing expected VLANs"
+            success_msg: "VyOS VLAN configuration validated successfully"
+          when: vyos_vlans.rc == 0
+          ignore_errors: true
+
+        - name: Validate firewall configuration content
+          ansible.builtin.assert:
+            that:
+              - vyos_firewall.rc == 0
+              - "'VLAN10_IN' in vyos_firewall.stdout or 'firewall' in vyos_firewall.stdout"
+            fail_msg: "VyOS firewall configuration validation failed - missing firewall rules"
+            success_msg: "VyOS firewall configuration validated successfully"
+          when: vyos_firewall.rc == 0
+          ignore_errors: true
+
+        - name: Validate DHCP configuration content
+          ansible.builtin.assert:
+            that:
+              - vyos_dhcp.rc == 0
+              - "'10.10.0' in vyos_dhcp.stdout or '10.50.0' in vyos_dhcp.stdout or 'dhcp-server' in vyos_dhcp.stdout"
+            fail_msg: "VyOS DHCP configuration validation failed - missing DHCP pools"
+            success_msg: "VyOS DHCP configuration validated successfully"
+          when: vyos_dhcp.rc == 0
           ignore_errors: true
 
         - name: Display VyOS configuration verification results
@@ -126,6 +170,12 @@
               VLANs: {{ 'SUCCESS' if vyos_vlans.rc == 0 else 'FAILED' }}
               Firewall: {{ 'SUCCESS' if vyos_firewall.rc == 0 else 'FAILED' }}
               DHCP: {{ 'SUCCESS' if vyos_dhcp.rc == 0 else 'FAILED' }}
+              
+              Configuration Content Validation:
+              - Interface validation: {{ 'PASSED' if vyos_interfaces.rc == 0 and 'eth0' in vyos_interfaces.stdout else 'FAILED' }}
+              - VLAN validation: {{ 'PASSED' if vyos_vlans.rc == 0 and ('vif 10' in vyos_vlans.stdout or 'dmz' in vyos_vlans.stdout) else 'FAILED' }}
+              - Firewall validation: {{ 'PASSED' if vyos_firewall.rc == 0 and ('VLAN10_IN' in vyos_firewall.stdout or 'firewall' in vyos_firewall.stdout) else 'FAILED' }}
+              - DHCP validation: {{ 'PASSED' if vyos_dhcp.rc == 0 and ('10.10.0' in vyos_dhcp.stdout or '10.50.0' in vyos_dhcp.stdout) else 'FAILED' }}
               
               {% if vyos_interfaces.rc == 0 %}
               Interface Output:
@@ -152,7 +202,7 @@
 
     - name: Verify SSH key was generated
       ansible.builtin.stat:
-        path: /tmp/vyos_key
+        path: ~/.ssh/vyos-keys/vyos_key
       register: ssh_key
       failed_when: not ssh_key.stat.exists
 

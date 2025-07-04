@@ -53,7 +53,7 @@
     lines:
       - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} default-router {{ item.gateway }}
       - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} name-server {{ vyos_dns_servers | join(' ') }}
-      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} domain-name {{ item.name }}.homelab.local
+      - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} domain-name {{ item.name }}.{{ vyos_private_domain }}
       - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} range vlan{{ item.vlan_id }} start {{ item.dhcp_range.split('-')[0] }}
       - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} range vlan{{ item.vlan_id }} stop {{ item.dhcp_range.split('-')[1] }}
       - set service dhcp-server shared-network-name {{ item.name }} subnet {{ item.subnet }} lease 86400
@@ -145,10 +145,10 @@
     ansible_connection: ansible.netcommon.network_cli
   when: vyos_vm_ip is defined
 
-- name: Configure HTTPS web interface
+- name: Configure HTTPS web interface on management interface
   vyos.vyos.vyos_config:
     lines:
-      - set service https listen-address 0.0.0.0
+      - set service https listen-address {{ vyos_vm_ip }}
       - set service https port {{ vyos_web_port | default(443) }}
   vars:
     ansible_network_os: vyos
@@ -158,28 +158,19 @@
     ansible_connection: ansible.netcommon.network_cli
   when: vyos_vm_ip is defined
 
-- name: Configure basic firewall settings
+- name: Configure HTTPS web interface on VLAN gateway addresses
   vyos.vyos.vyos_config:
     lines:
-      - set firewall all-ping enable
-      - set firewall broadcast-ping disable
-      - set firewall config-trap disable
-      - set firewall ipv6-receive-redirects disable
-      - set firewall ipv6-src-route disable
-      - set firewall ip-src-route disable
-      - set firewall log-martians enable
-      - set firewall receive-redirects disable
-      - set firewall send-redirects enable
-      - set firewall source-validation disable
-      - set firewall syn-cookies enable
-      - set firewall twa-hazards-protection disable
+      - set service https listen-address {{ item.gateway }}
   vars:
     ansible_network_os: vyos
     ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
     ansible_port: "{{ vyos_ssh_port | default(2222) }}"
     ansible_user: vyos
     ansible_connection: ansible.netcommon.network_cli
-  when: vyos_vm_ip is defined
+  loop: "{{ vyos_vlan_networks }}"
+  when: vyos_vm_ip is defined and vyos_enable_vlans | default(true) and item.name in ['secure', 'management']
+
 
 - name: Configure VyOS save configuration
   vyos.vyos.vyos_config:

@@ -1,4 +1,27 @@
 ---
+- name: Configure basic firewall settings
+  vyos.vyos.vyos_config:
+    lines:
+      - set firewall all-ping enable
+      - set firewall broadcast-ping disable
+      - set firewall config-trap disable
+      - set firewall ipv6-receive-redirects disable
+      - set firewall ipv6-src-route disable
+      - set firewall ip-src-route disable
+      - set firewall log-martians enable
+      - set firewall receive-redirects disable
+      - set firewall send-redirects enable
+      - set firewall source-validation disable
+      - set firewall syn-cookies enable
+      - set firewall twa-hazards-protection disable
+  vars:
+    ansible_network_os: vyos
+    ansible_host: "{{ vyos_vm_ip | default('192.168.122.50') }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+    ansible_user: vyos
+    ansible_connection: ansible.netcommon.network_cli
+  when: vyos_vm_ip is defined
+
 - name: Configure VLAN firewall rules
   vyos.vyos.vyos_config:
     lines:
