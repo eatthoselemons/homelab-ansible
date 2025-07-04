@@ -26,3 +26,4 @@ dependencies:
   community.general: ">=1.0.0"
   community.libvirt: ">=1.0.0"
   community.docker: ">=3.10.4"
+  vyos.vyos: ">=4.0.0"

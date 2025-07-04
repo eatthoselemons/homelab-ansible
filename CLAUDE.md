@@ -2,6 +2,54 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Guidelines
+
+### Ansible Best Practices
+
+**DO:**
+- Use YAML anchors and aliases to reduce duplication
+- Implement proper error handling with `failed_when` and `ignore_errors`
+- Use Ansible Vault for sensitive data, Infisical for runtime secrets
+- Follow collection namespace conventions: `homelab.nexus.role_name`
+- Test all roles with molecule before deployment
+- Use meaningful task names that describe the action
+- Implement idempotency - tasks should be safe to run multiple times
+- Use `check_mode` compatible tasks where possible
+- Document role variables in `meta/main.yml`
+
+**DON'T:**
+- Hardcode sensitive values in playbooks or roles
+- Use `shell` module when `command` or specialized modules exist
+- Mix site-specific configuration in collection roles
+- Skip error handling for external dependencies
+- Use `become: yes` without considering security implications
+
+### Code Structure
+
+- **Roles**: Single-purpose, reusable components in collection
+- **Variables**: Use `defaults/main.yml` for overridable defaults, `vars/main.yml` for constants
+- **Templates**: Jinja2 templates in `templates/` directory
+- **Handlers**: Service restarts and notifications in `handlers/main.yml`
+- **Testing**: Molecule scenarios for each role with proper isolation
+
+### Error Handling
+
+```yaml
+# Example of proper error handling
+- name: Configure service
+  template:
+    src: service.conf.j2
+    dest: /etc/service/service.conf
+  notify: restart service
+  failed_when: false
+  register: config_result
+
+- name: Fail on configuration error
+  fail:
+    msg: "Service configuration failed: {{ config_result.stderr }}"
+  when: config_result.rc != 0 and 'already exists' not in config_result.stderr
+```
+
 ## Project Overview
 
 This is a homelab infrastructure automation project using Ansible to manage network equipment, VyOS virtual routers, and server provisioning. The project is structured as two main sections:
@@ -57,7 +105,7 @@ ansible-playbook playbooks/site.yml --tags="system,security"
 
 ### Testing with Molecule
 ```bash
-# Activate virtual environment first (only needed once per session)
+# Activate virtual environment first
 source ~/ansible-venv/bin/activate
 
 # Navigate to collection test directory
@@ -78,60 +126,8 @@ molecule converge -s vyos_setup
 # Note: Virtual environment activation persists throughout the session
 # No need to reactivate unless you open a new terminal
 
-# Current Status: 
-# ✅ Structure: All 5 scenarios discovered and configured properly
-# ✅ Syntax: All playbooks pass syntax validation  
-# ✅ Connectivity: Docker container setup working with systemd
-# ✅ VyOS Testing: Full libvirt + KVM acceleration in containers
-# ✅ Network Setup: WAN/LAN networks created and functional
-# ✅ VM Creation: VyOS VMs can be created and started successfully
-# ✅ Centralized Configuration: Shared molecule base config eliminates duplication
-# ✅ Environment Variables: Ubuntu version management through .env.yml
-# ✅ Test Isolation: Each scenario maintains independent test environments
-# 
-# Technical Setup:
-# - Docker containers run with systemd and KVM hardware acceleration
-# - libvirtd service starts properly in privileged containers
-# - Disk image creation using stafwag.qemu_img community role
-# - Conditional network templates: NAT mode for testing, bridge mode for production
-# - Proper file ownership and permissions for libvirt access
-# - Shared molecule configuration in /.config/molecule/config.yml
-# - Centralized environment variables in molecule/.env.yml
-# - Role-specific converge.yml files maintain test isolation
-# 
-# Dependencies:
-# - KVM hardware acceleration (/dev/kvm mounted in containers)
-# - systemd running in containers for service management
-# - stafwag.qemu_img role for disk image creation
-# - community.libvirt collection for VM and network management
-
-# Molecule Testing Configuration:
-# All molecule scenarios use centralized configuration management:
-# 
-# 1. Environment Variables (molecule/.env.yml):
-#    - UBUNTU_VERSION: "2404" 
-#    - MOLECULE_DOCKER_IMAGE: "geerlingguy/docker-ubuntu2404-ansible:latest"
-#    - All container configuration (volumes, capabilities, etc.)
-#    Usage: molecule -e molecule/.env.yml converge -s scenario_name
-# 
-# 2. Shared Base Configuration (/.config/molecule/config.yml):
-#    - Common provisioner, dependency, driver, and verifier settings
-#    - Reduces molecule.yml files from ~35 lines to ~18 lines each
-#    - Maintains consistent Ansible configuration across all scenarios
-# 
-# 3. Scenario-Specific Testing:
-#    - default: Basic container environment validation
-#    - security_hardening: Security role testing with auditd, UFW, fail2ban
-#    - vyos_setup: VyOS VM creation with libvirt in NAT mode
-#    - services_vm_setup: Services VM prerequisites and libvirt validation
-#    - harvester_test: Container networking validation for cluster testing
-# 
-# 4. Test Isolation Principles:
-#    - Each scenario gets fresh Docker container
-#    - No shared state between role tests
-#    - Role-specific prerequisites in individual converge.yml files
-#    - Independent failure domains prevent test contamination
-# 
+# Available test scenarios: default, security_hardening, vyos_setup, services_vm_setup, harvester_test
+# All scenarios use centralized configuration from molecule/.env.yml and /.config/molecule/config.yml
 ```
 
 ## Repository Structure
@@ -188,7 +184,7 @@ All sensitive data managed through Infisical with dynamic retrieval:
 
 ## VyOS Network Configuration
 
-The VyOS setup role supports conditional network modes:
+The VyOS setup role supports conditional network modes and uses native VyOS modules for configuration:
 
 ### Production (Default)
 ```yaml
@@ -200,12 +196,14 @@ vyos_vm:
   vcpus: 2
   disk_path: /var/lib/libvirt/images/vyos-router.qcow2
   disk_size: 20G
+vyos_configure_router: true  # Enable full VyOS configuration
 ```
 
 ### Testing/Development  
 ```yaml
 # Uses NAT mode for container compatibility in molecule tests
 vyos_network_mode: nat
+vyos_configure_router: false  # Skip VyOS configuration in tests
 vyos_vm:
   name: vyos-router
   memory: 1024
@@ -215,6 +213,35 @@ vyos_vm:
 ```
 
 This allows the same role to work in both production environments (with real network bridges) and containerized testing environments (with isolated NAT networks).
+
+### VyOS Configuration Best Practices
+
+**Native Module Usage:**
+- Use `vyos.vyos.vyos_config` module for all VyOS configuration
+- Avoid bash scripts - use structured Ansible configuration blocks
+- Use proper connection variables for network device access
+- Implement idempotent configuration with `save: true`
+
+**Connection Management:**
+```yaml
+vars:
+  ansible_network_os: vyos
+  ansible_host: "{{ vyos_vm_ip }}"
+  ansible_port: "{{ vyos_ssh_port }}"
+  ansible_user: vyos
+  ansible_connection: ansible.netcommon.network_cli
+```
+
+**Task Organization:**
+- `vyos_ssh_setup.yaml` - SSH key management and initial access
+- `vyos_config.yaml` - Network interfaces, services, and basic configuration
+- `vyos_firewall.yaml` - Firewall rules and security policies
+- Logical separation improves maintainability and testing
+
+**Error Handling:**
+- Use `ignore_errors: true` for SSH connectivity tests
+- Implement proper `when` conditions for configuration tasks
+- Use `rescue` blocks for graceful failure handling
 
 ## Key Integration Points
 
@@ -232,5 +259,41 @@ This allows the same role to work in both production environments (with real net
 - `versions/`: Package version pinning
 - `docs/`: Architecture documentation and prompts
 
-## Extra instructions
-- If you get a file/directory not found error use `pwd` to check your current location
+## Troubleshooting
+
+### Common Issues
+
+**Environment Setup:**
+- **Error:** `ansible-playbook: command not found`
+  - **Solution:** Activate Python virtual environment: `source ~/ansible-venv/bin/activate`
+
+**Molecule Testing:**
+- **Error:** `Permission denied` accessing `/dev/kvm`
+  - **Solution:** Add user to kvm group: `sudo usermod -a -G kvm $USER`
+
+**VyOS VM Issues:**
+- **Error:** VM fails to start with network errors
+  - **Solution:** Check network mode configuration, use `nat` for testing
+
+**Secret Management:**
+- **Error:** Infisical secrets not found
+  - **Solution:** Verify `INFISICAL_CLIENT_SECRET` environment variable is set
+
+### Debugging Tips
+
+```bash
+# Check current directory if file/directory not found
+pwd
+
+# Verbose Ansible output
+ansible-playbook -vvv playbooks/setup-nexus.yaml
+
+# Test molecule scenario without cleanup
+molecule converge -s scenario_name
+
+# Check molecule containers
+docker ps -a
+
+# Inspect role variables
+ansible-inventory --list
+```
