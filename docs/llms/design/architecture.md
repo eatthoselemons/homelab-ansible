@@ -1,22 +1,3 @@
-## ArgoCD Repository Structure Question
-
-For the monorepo question - ArgoCD can definitely deploy individual services from a monorepo using different "Applications" that point to subdirectories. You could have:
-```
-homelab-infra/
-├── services/
-│   ├── immich/
-│   ├── authentik/
-│   ├── truenas/
-│   └── ...
-└── argocd-apps/
-    ├── immich-app.yaml
-    ├── authentik-app.yaml
-    └── ...
-```
-
-Each ArgoCD Application watches a specific path, so you get the benefits of a monorepo (single source of truth, coordinated changes) with selective deployment.
-
-
 # Homelab Infrastructure Automation Project
 
 ## Mission Statement
