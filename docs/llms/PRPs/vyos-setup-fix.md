@@ -1,427 +1,709 @@
-name: "VyOS Setup Fix and Hardening PRP"
-description: |
+# VyOS Setup Fix - Project Requirements Plan (PRP)
 
-## Purpose
-Fix VyOS VM setup to properly install the OS using delegated_vm_install role, implement security best practices, and create comprehensive molecule tests for production-ready deployment.
+## Executive Summary
 
-## Core Principles
-1. **Context is King**: Include ALL necessary documentation, examples, and caveats
-2. **Validation Loops**: Provide executable tests/lints the AI can run and fix
-3. **Information Dense**: Use keywords and patterns from the codebase
-4. **Progressive Success**: Start simple, validate, then enhance
-5. **Global rules**: Be sure to follow all rules in CLAUDE.md
+This PRP outlines the implementation plan to fix the VyOS setup and testing in the homelab environment. The current setup fails to properly install the VyOS operating system, lacks security hardening, and needs comprehensive molecule testing. This implementation will leverage the `stafwag/ansible-role-delegated_vm_install` role for proper VM installation and include building VyOS images using Docker.
 
----
+## Context and References
 
-## Goal
-Fix the VyOS router setup on Nexus node to:
-1. Properly install VyOS OS using stafwag.delegated_vm_install role
-2. Apply VyOS security hardening best practices
-3. Create comprehensive molecule tests that simulate production environment
+### Critical Documentation URLs
+- VyOS Build Documentation: https://docs.vyos.io/en/latest/contributing/build-vyos.html
+- VyOS Ansible Module Documentation: https://docs.ansible.com/ansible/latest/collections/vyos/vyos/index.html
+- Delegated VM Install Role: https://github.com/stafwag/ansible-role-delegated_vm_install
+- VyOS Cloud-Init: https://docs.vyos.io/en/latest/installation/cloud/index.html
+- Zone-based Firewall: https://docs.vyos.io/en/latest/configuration/firewall/zone.html
+- VyOS Security Hardening: https://forum.vyos.io/t/vyos-configuration-tips-for-enhancing-network-security/11087
 
-## Why
-- **Business value**: VyOS is the critical router/firewall for the entire homelab infrastructure
-- **Integration**: Routes traffic between WAN and 7 internal VLANs (DMZ, Untrusted WiFi, Trusted WiFi, IoT, Secure, Management, Logging)
-- **Problems solved**: Currently VM has no OS installed, security hardening not applied, tests insufficient
+### Local Documentation References
+- Molecule Testing Documentation: `/home/user/IdeaProjects/homelab-ansible/references/molecule/docs`
+- Delegated VM Install Documentation: `/home/user/IdeaProjects/homelab-ansible/references/ansible-role-delegated_vm_install/README.md`
+- Architecture Overview: `/home/user/IdeaProjects/homelab-ansible/docs/llms/design/architecture.md`
+- Security Best Practices: `/home/user/IdeaProjects/homelab-ansible/docs/llms/examples/best-practices.md`
 
-## What
-- VyOS VM properly boots with installed OS
-- Security hardening applied (fail2ban, firewall rules, SSH keys)
-- Idempotent role that can run multiple times
-- Comprehensive molecule tests simulating production
+### Existing Codebase References
+- Current VyOS Role: `/home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/nexus/roles/vyos_setup/`
+- Molecule Test Examples: `/home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/nexus/extensions/molecule/`
+- VM Setup Pattern: `/home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/nexus/roles/services_vm_setup/`
 
-### Success Criteria
-- [ ] VyOS VM successfully installs and boots with cloud-init
-- [ ] All 7 VLANs configured with proper isolation
-- [ ] Security hardening applied (fail2ban, firewall default drop)
-- [ ] Molecule tests pass with simulated VyOS environment
-- [ ] Role is idempotent - can run multiple times without issues
+## Current State Analysis
 
-## All Needed Context
+### Issues Identified
+1. **No OS Installation**: VM created but ISO path commented out in `templates/vyos_vm.xml.j2`
+2. **Missing Cloud-Init**: No cloud-init configuration for initial setup
+3. **Incomplete Testing**: Basic molecule test exists but doesn't verify functionality
+4. **Security Gaps**: Default user not removed, firewall not properly configured
 
-### Documentation & References (list all context needed to implement the feature)
-```yaml
-# MUST READ - Include these in your context window
-- url: https://docs.vyos.io/en/latest/automation/cloud-init.html
-  why: VyOS cloud-init configuration for automated setup
-  
-- url: https://docs.vyos.io/en/latest/configuration/firewall/index.html
-  why: Firewall configuration best practices for VyOS 1.5.x
-  
-- url: https://github.com/vyos/vyos-vm-images
-  why: Official VyOS VM image generation with cloud-init support
-  
-- file: references/ansible-role-delegated_vm_install/README.md
-  why: How to use delegated_vm_install role for VM provisioning
-  
-- file: references/ansible-role-delegated_vm_install/docs/examples/single_node_debian12/inventory.yml
-  why: Example of VM configuration with delegated_vm_install
-  
-- file: collections/ansible_collections/homelab/nexus/roles/vyos_setup/defaults/main.yaml
-  why: Current VyOS configuration including VLANs and security settings
-  
-- file: collections/ansible_collections/homelab/nexus/roles/vyos_setup/tasks/main.yaml
-  why: Current implementation to understand what needs fixing
-  
-- doc: references/molecule/docs
-  why: Molecule testing documentation for creating comprehensive tests
-  
-- docfile: docs/llms/design/architecture.md
-  why: System architecture showing VyOS role in infrastructure
-```
-
-### Current Codebase tree (run `tree` in the root of the project) to get an overview of the codebase
-```bash
-collections/ansible_collections/homelab/nexus/
-├── roles/
-│   └── vyos_setup/
-│       ├── defaults/main.yaml     # VM and VLAN configurations
-│       ├── tasks/
-│       │   ├── main.yaml         # Main orchestration (needs fix)
-│       │   ├── vlan_setup.yaml   # VLAN network setup
-│       │   ├── vyos_config.yaml  # VyOS configuration
-│       │   └── fail2ban.yaml     # Security hardening
-│       └── templates/
-│           ├── vyos_vm.xml.j2    # LibVirt VM definition
-│           ├── *_network.xml.j2  # Network configurations
-│           └── vyos_*.j2         # VyOS config templates
-└── extensions/molecule/
-    └── vyos_setup/               # Basic test (needs enhancement)
-```
-
-### Desired Codebase tree with files to be added and responsibility of file
-```bash
-collections/ansible_collections/homelab/nexus/
-├── roles/
-│   └── vyos_setup/
-│       ├── defaults/main.yaml         # Enhanced with delegated_vm_install vars
-│       ├── tasks/
-│       │   ├── main.yaml             # Orchestrate delegated_vm_install
-│       │   ├── prepare_vm.yaml       # NEW: Prepare VM installation
-│       │   ├── vlan_setup.yaml      # Existing VLAN setup
-│       │   ├── vyos_config.yaml     # Enhanced with cloud-init
-│       │   └── fail2ban.yaml        # Security hardening
-│       ├── templates/
-│       │   ├── vyos_vm_template.yml  # NEW: delegated_vm_install template
-│       │   ├── cloud-init/
-│       │   │   ├── user-data.j2     # NEW: VyOS cloud-init config
-│       │   │   └── network-config.j2 # NEW: Network cloud-init
-│       │   └── (existing templates)
-│       └── files/
-│           └── vyos-1.5-cloud.qcow2  # NEW: VyOS cloud image (or URL)
-└── extensions/molecule/
-    ├── nexus.vyos.setup/            # Renamed: Basic VM setup test
-    ├── nexus.vyos.security_hardening/ # NEW: Security test scenario
-    └── nexus.vyos.full_integration/  # NEW: Complete integration test
-```
-
-### Known Gotchas of our codebase & Library Quirks
-```yaml
-# CRITICAL: VyOS specific requirements
-# - VyOS 1.5.x requires cloud-init for automated provisioning
-# - Default VyOS allows all traffic - must change to drop
-# - VyOS cloud images need qcow2 format for libvirt
-# - Cloud-init runs only on first boot - use vyos_config_commands
-
-# CRITICAL: delegated_vm_install requirements
-# - Requires stafwag.delegated_vm_install from Ansible Galaxy
-# - VM must be defined in inventory with vm_ip_address and vm_kvm_host
-# - Template path must be relative to playbook or absolute
-# - Cloud-init ISO is auto-generated from templates
-
-# CRITICAL: Molecule testing with VMs
-# - Use Docker containers with KVM support for VM testing
-# - Mount /dev/kvm for hardware acceleration
-# - LibVirt must be installed in test container
-# - Network isolation required for VLAN testing
-```
+### Architecture Context
+From `docs/llms/design/architecture.md`:
+- Nexus Node runs LibVirt hosting VyOS router VM
+- Network topology: Internet → Modem → Nexus:Port1(WAN) → VyOS VM → Nexus:Port2(LAN)
+- 7 VLANs configured: DMZ(10), Untrusted WiFi(20), Trusted WiFi(30), IoT(40), Secure(50), Management(60), Logging(70)
 
 ## Implementation Blueprint
 
-### Data models and structure
+### Phase 1: VyOS Image Building
+As specified in the feature requirements, build VyOS image using Docker method:
 
-VyOS VM inventory configuration structure:
-```yaml
-# inventory.yml enhancement
-vyos:
-  hosts:
-    vyos-router:
-      ansible_host: "{{ vyos_wan_ip }}"
-      vm_ip_address: "{{ vyos_wan_ip }}"
-      vm_kvm_host: localhost
-      delegated_vm_install:
-        vm:
-          template: roles/vyos_setup/templates/vyos_vm_template.yml
-          path: /var/lib/libvirt/images/vyos
-          boot_disk:
-            src: https://github.com/vyos/vyos-rolling-nightly-builds/releases/download/1.5-rolling/vyos-1.5-rolling-amd64.qcow2
-            size: 20G
-          memory: 4096
-          cpus: 2
-          networks:
-            - name: wan
-              type: bridge
-              bridge: "{{ vyos_wan_bridge }}"
-            - name: lan
-              type: bridge
-              bridge: "{{ vyos_lan_bridge }}"
+```pseudocode
+1. Create role: vyos_image_builder
+   - Install Docker prerequisites
+   - Clone VyOS build repository  
+   - Run Docker container build process
+   - Save ISO to ignored directory
+   
+2. Directory structure:
+   collections/ansible_collections/homelab/nexus/
+   └── images/
+       └── vyos/
+           ├── .gitignore (*.iso, *.qcow2)
+           └── README.md
 ```
 
-### list of tasks to be completed to fullfill the PRP in the order they should be completed
+### Phase 2: Integrate delegated_vm_install Role
+Refactor vyos_setup to properly install VM with OS:
 
-```yaml
-Task 1:
-MODIFY collections/ansible_collections/homelab/nexus/roles/vyos_setup/tasks/main.yaml:
-  - REMOVE direct virt-install commands
-  - ADD include_role for stafwag.delegated_vm_install
-  - ADD pre-tasks for network setup
-  - PRESERVE VLAN configuration tasks
-
-Task 2:
-CREATE collections/ansible_collections/homelab/nexus/roles/vyos_setup/templates/vyos_vm_template.yml:
-  - MIRROR pattern from: references/ansible-role-delegated_vm_install/templates/vms/debian/12/debian_vm_template.yml
-  - MODIFY for VyOS specific requirements
-  - ADD dual network interface configuration
-  - INCLUDE cloud-init user-data template reference
-
-Task 3:
-CREATE collections/ansible_collections/homelab/nexus/roles/vyos_setup/templates/cloud-init/user-data.j2:
-  - ADD VyOS initial configuration commands
-  - INCLUDE VLAN interface setup
-  - ADD firewall default-action drop rules
-  - CONFIGURE SSH with key-only authentication
-  - SET hostname and system parameters
-
-Task 4:
-MODIFY collections/ansible_collections/homelab/nexus/roles/vyos_setup/defaults/main.yaml:
-  - ADD delegated_vm_install variables
-  - ADD VyOS image URL or path
-  - PRESERVE existing VLAN configurations
-  - ADD cloud-init command lists
-
-Task 5:
-CREATE collections/ansible_collections/homelab/nexus/roles/vyos_setup/tasks/prepare_vm.yaml:
-  - CHECK for existing VM
-  - DOWNLOAD VyOS cloud image if needed
-  - PREPARE cloud-init configuration
-  - SET proper file permissions
-
-Task 6:
-ENHANCE collections/ansible_collections/homelab/nexus/roles/vyos_setup/tasks/vyos_config.yaml:
-  - ADD vyos.vyos collection tasks
-  - CONFIGURE firewall rules per VLAN
-  - APPLY security hardening
-  - ENSURE idempotency
-
-Task 7:
-CREATE collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.setup/molecule.yml:
-  - CONFIGURE Docker platform with KVM support
-  - ADD libvirt installation in prepare.yml
-  - TEST basic VM creation and boot
-
-Task 8:
-CREATE collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.security_hardening/molecule.yml:
-  - TEST firewall default drop policy
-  - VERIFY fail2ban configuration
-  - CHECK SSH key-only access
-  - VALIDATE VLAN isolation
-
-Task 9:
-CREATE comprehensive integration test scenario
+```pseudocode
+1. Install delegated_vm_install and dependencies:
+   - stafwag.libvirt
+   - stafwag.qemu_img
+   - stafwag.cloud_localds
+   - stafwag.virt_install_import
+   
+2. Configure delegated_vm_install:
+   - Use built VyOS ISO as boot_disk.src
+   - Set up dual network interfaces (WAN/LAN)
+   - Configure minimal cloud-init
 ```
 
-### Per task pseudocode as needed added to each task
+### Phase 3: Security Hardening
+Based on `docs/llms/examples/best-practices.md`:
+
+```pseudocode
+1. User Management:
+   - Create admin user with strong password
+   - Add SSH key authentication
+   - Delete default "vyos" user
+   
+2. Firewall Configuration:
+   - Default deny on input/forward chains
+   - Stateful connection tracking
+   - Zone-based firewall for VLANs
+   - Rate limiting on SSH
+   
+3. System Hardening:
+   - SSH on port 2222
+   - Disable password authentication
+   - Configure fail2ban
+   - Set up NTP without server mode
+```
+
+### Phase 4: Comprehensive Testing
+
+```pseudocode
+Test scenarios:
+1. nexus.vyos.setup - VM creation and boot
+2. nexus.vyos.security_hardening - Security verification  
+3. nexus.vyos.full_integration - Complete VLAN setup
+```
+
+## Detailed Implementation Tasks
+
+### Task 1: Create VyOS Image Builder Role
+**Location**: `collections/ansible_collections/homelab/nexus/roles/vyos_image_builder/`
+
 ```yaml
-# Task 1 - Main orchestration
-# Path: collections/ansible_collections/homelab/nexus/roles/vyos_setup/tasks/main.yaml
+# defaults/main.yml
 ---
-- name: Include VyOS VM preparation
-  include_tasks: prepare_vm.yaml
+vyos_build_dir: /tmp/vyos-build
+vyos_images_dir: "{{ playbook_dir }}/../images/vyos"
+vyos_version: current
+vyos_architecture: amd64
 
-- name: Setup network infrastructure
-  include_tasks: vlan_setup.yaml
-  
+# tasks/main.yml
+---
+- name: Check if VyOS image already exists
+  stat:
+    path: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
+  register: vyos_image
+
+- name: Build VyOS image
+  when: not vyos_image.stat.exists
+  block:
+    - name: Install Docker and dependencies
+      apt:
+        name:
+          - docker.io
+          - git
+          - curl
+        state: present
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create build directory
+      file:
+        path: "{{ vyos_build_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Clone VyOS build repository
+      git:
+        repo: https://github.com/vyos/vyos-build.git
+        dest: "{{ vyos_build_dir }}/vyos-build"
+        version: "{{ vyos_version }}"
+
+    - name: Pull VyOS build Docker image
+      docker_image:
+        name: vyos/vyos-build:{{ vyos_version }}
+        source: pull
+
+    - name: Build VyOS ISO using Docker
+      docker_container:
+        name: vyos-builder
+        image: vyos/vyos-build:{{ vyos_version }}
+        command: |
+          bash -c "./build-vyos-image iso 
+            --architecture {{ vyos_architecture }} 
+            --build-by 'homelab-ansible' 
+            --build-type release"
+        volumes:
+          - "{{ vyos_build_dir }}/vyos-build:/vyos"
+        working_dir: /vyos
+        detach: no
+        cleanup: yes
+
+    - name: Ensure images directory exists
+      file:
+        path: "{{ vyos_images_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Find built ISO
+      find:
+        paths: "{{ vyos_build_dir }}/vyos-build/build"
+        patterns: "vyos-*.iso"
+      register: built_iso
+
+    - name: Copy ISO to images directory
+      copy:
+        src: "{{ built_iso.files[0].path }}"
+        dest: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
+        remote_src: yes
+        mode: '0644'
+```
+
+### Task 2: Refactor vyos_setup Role
+**Location**: `collections/ansible_collections/homelab/nexus/roles/vyos_setup/`
+
+```yaml
+# tasks/main.yml - Updated structure
+---
+- name: Build VyOS image if needed
+  include_role:
+    name: homelab.nexus.vyos_image_builder
+  when: vyos_build_image | default(false)
+
+- name: Install libvirt and dependencies
+  apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - python3-libvirt
+      - cloud-image-utils
+    state: present
+    update_cache: yes
+
+- name: Start and enable libvirtd
+  systemd:
+    name: libvirtd
+    state: started
+    enabled: yes
+
+- name: Create required directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: libvirt-qemu
+    group: kvm
+    mode: '0755'
+  loop:
+    - /var/lib/libvirt/images
+    - /var/lib/libvirt/cloud-init
+
+- name: Check for VyOS ISO
+  stat:
+    path: "{{ vyos_iso_path | default(vyos_images_dir + '/vyos-current.iso') }}"
+  register: vyos_iso
+  failed_when: not vyos_iso.stat.exists
+  vars:
+    vyos_images_dir: "{{ playbook_dir }}/../images/vyos"
+
+- name: Create cloud-init user data
+  template:
+    src: cloud-init/user-data.j2
+    dest: /var/lib/libvirt/cloud-init/vyos-user-data
+    mode: '0644'
+
+- name: Create cloud-init network config
+  template:
+    src: cloud-init/network-config.j2
+    dest: /var/lib/libvirt/cloud-init/vyos-network-config
+    mode: '0644'
+
+- name: Generate cloud-init ISO
+  command: |
+    cloud-localds /var/lib/libvirt/images/vyos-cloud-init.iso \
+      /var/lib/libvirt/cloud-init/vyos-user-data \
+      --network-config=/var/lib/libvirt/cloud-init/vyos-network-config
+  args:
+    creates: /var/lib/libvirt/images/vyos-cloud-init.iso
+
 - name: Deploy VyOS VM using delegated_vm_install
   include_role:
     name: stafwag.delegated_vm_install
   vars:
-    # Variables will come from inventory and defaults
-    
-- name: Wait for VyOS to be reachable
-  wait_for:
-    host: "{{ vm_ip_address }}"
-    port: 22
-    delay: 30
-    timeout: 300
-    
-- name: Configure VyOS
-  include_tasks: vyos_config.yaml
-  when: vyos_vm_created is changed or vyos_always_configure | bool
+    vm_ip_address: "{{ vyos_vm_ip }}"
+    vm_kvm_host: "{{ inventory_hostname }}"
+    delegated_vm_install:
+      post:
+        pause:
+          seconds: 30
+        update_etc_hosts: false
+        ensure_running: true
+        package_update: false
+        reboot_after_update: false
+      vm:
+        hostname: "{{ vyos_vm.name }}"
+        path: "/var/lib/libvirt/images/"
+        boot_disk:
+          src: "{{ vyos_iso.stat.path }}"
+        size: "{{ vyos_vm.disk_size }}"
+        disks:
+          - dest: "/var/lib/libvirt/images/vyos-cloud-init.iso"
+            format: raw
+            src: "/var/lib/libvirt/images/vyos-cloud-init.iso"
+            type: cdrom
+        memory: "{{ vyos_vm.memory }}"
+        vcpus: "{{ vyos_vm.vcpus }}"
+        interface: "eth0"
+        gateway: "{{ ansible_default_ipv4.gateway | default('192.168.122.1') }}"
+        dns_nameservers: "{{ vyos_dns_servers | join(',') }}"
+        wait: 0
+        poweroff: false
+        reboot: false
 
-# Task 3 - Cloud-init user data
-# Path: templates/cloud-init/user-data.j2
+- name: Configure libvirt networks
+  include_tasks: configure_networks.yaml
+
+- name: Wait for VyOS to be accessible
+  wait_for:
+    host: "{{ vyos_vm_ip }}"
+    port: "{{ vyos_ssh_port }}"
+    delay: 60
+    timeout: 600
+
+- name: Apply VyOS configuration
+  include_tasks: vyos_config.yaml
+  when: vyos_configure_router | default(true)
+
+- name: Apply security hardening
+  include_tasks: security_hardening.yaml
+  when: vyos_security_hardening | default(true)
+
+- name: Configure VLANs
+  include_tasks: vlan_setup.yaml
+  when: vyos_enable_vlans | default(true)
+```
+
+### Task 3: Cloud-Init Templates
+**Location**: `collections/ansible_collections/homelab/nexus/roles/vyos_setup/templates/cloud-init/`
+
+```yaml
+# user-data.j2
 #cloud-config
 vyos_config_commands:
   # System configuration
-  - set system host-name '{{ vyos_hostname }}'
-  - set system domain-name '{{ vyos_domain }}'
+  - set system host-name '{{ vyos_vm.name | default("vyos-router") }}'
+  - set system time-zone 'UTC'
   
-  # Interface configuration
-  - set interfaces ethernet eth0 address 'dhcp'
+  # Temporary user for initial access
+  - set system login user vyos authentication plaintext-password 'temp-{{ lookup('password', '/dev/null length=16') }}'
+  - set system login user vyos authentication public-keys ansible type 'ssh-rsa'
+  - set system login user vyos authentication public-keys ansible key '{{ vyos_ansible_ssh_key }}'
+  
+  # Basic interface configuration
   - set interfaces ethernet eth0 description 'WAN'
+  - set interfaces ethernet eth0 address 'dhcp'
+  - set interfaces ethernet eth1 description 'LAN'
+  - set interfaces ethernet eth1 address '{{ vyos_vm_ip }}/24'
   
-  # VLAN interfaces
-{% for vlan in vyos_vlans %}
-  - set interfaces ethernet eth1 vif {{ vlan.id }} address '{{ vlan.gateway }}'
-  - set interfaces ethernet eth1 vif {{ vlan.id }} description '{{ vlan.name }}'
-{% endfor %}
+  # Enable SSH
+  - set service ssh port '{{ vyos_ssh_port }}'
+  - set service ssh disable-password-authentication
+  
+  # Save configuration
+  - commit
+  - save
 
-  # Firewall - CRITICAL: Default drop
-  - set firewall global-options state-policy established action 'accept'
-  - set firewall global-options state-policy related action 'accept'
-  - set firewall global-options state-policy invalid action 'drop'
-  
-  # Default policies
-  - set firewall ipv4 forward filter default-action 'drop'
-  - set firewall ipv4 input filter default-action 'drop'
-  
-  # Management access
-  - set firewall ipv4 input filter rule 10 action 'accept'
-  - set firewall ipv4 input filter rule 10 destination port '22'
-  - set firewall ipv4 input filter rule 10 protocol 'tcp'
-  - set firewall ipv4 input filter rule 10 source address '{{ vyos_vlans | selectattr("name", "eq", "management") | map(attribute="subnet") | first }}'
-
-users:
-  - name: vyos
-    ssh_authorized_keys:
-{% for key in vyos_ssh_authorized_keys %}
-      - {{ key }}
-{% endfor %}
+# network-config.j2
+version: 2
+ethernets:
+  eth0:
+    dhcp4: true
+  eth1:
+    addresses: [{{ vyos_vm_ip }}/24]
 ```
 
-### Integration Points
+### Task 4: Security Hardening
+**Location**: `collections/ansible_collections/homelab/nexus/roles/vyos_setup/tasks/security_hardening.yaml`
+
 ```yaml
-INVENTORY:
-  - add to: collections/ansible_collections/homelab/nexus/inventory.yml
-  - pattern: Define vyos host with delegated_vm_install vars
-  
-REQUIREMENTS:
-  - add to: collections/ansible_collections/homelab/nexus/requirements.yml
-  - content: |
-      - name: stafwag.delegated_vm_install
-        version: ">=2.0.0"
-      - name: vyos.vyos
-        version: ">=4.0.0"
-  
-MOLECULE:
-  - update: extensions/molecule/default/molecule.yml
-  - add: KVM device mounting and libvirt packages
-  
-SITE PLAYBOOK:
-  - verify: site/playbooks/setup-nexus.yaml includes vyos_setup role
+---
+- name: Create admin user
+  vyos.vyos.vyos_user:
+    name: "{{ vyos_admin_user }}"
+    configured_password: "{{ vyos_admin_password | password_hash('sha512') }}"
+    state: present
+
+- name: Add SSH key for admin user
+  vyos.vyos.vyos_config:
+    lines:
+      - set system login user {{ vyos_admin_user }} authentication public-keys admin@homelab type 'ssh-rsa'
+      - set system login user {{ vyos_admin_user }} authentication public-keys admin@homelab key '{{ vyos_admin_ssh_key }}'
+
+- name: Configure firewall default policies
+  vyos.vyos.vyos_config:
+    lines:
+      # Default policies
+      - set firewall ipv4 input filter default-action 'drop'
+      - set firewall ipv4 forward filter default-action 'drop'
+      - set firewall ipv4 output filter default-action 'accept'
+      
+      # State policies
+      - set firewall global-options state-policy established action 'accept'
+      - set firewall global-options state-policy related action 'accept'
+      - set firewall global-options state-policy invalid action 'drop'
+
+- name: Configure firewall rules
+  vyos.vyos.vyos_config:
+    lines:
+      # Allow SSH from management network with rate limiting
+      - set firewall ipv4 input filter rule 100 action 'accept'
+      - set firewall ipv4 input filter rule 100 destination port '{{ vyos_ssh_port }}'
+      - set firewall ipv4 input filter rule 100 protocol 'tcp'
+      - set firewall ipv4 input filter rule 100 source address '10.60.0.0/24'
+      - set firewall ipv4 input filter rule 100 limit rate '3/minute'
+      
+      # Allow DHCP
+      - set firewall ipv4 input filter rule 200 action 'accept'
+      - set firewall ipv4 input filter rule 200 destination port '67-68'
+      - set firewall ipv4 input filter rule 200 protocol 'udp'
+      
+      # Allow DNS
+      - set firewall ipv4 input filter rule 300 action 'accept'
+      - set firewall ipv4 input filter rule 300 destination port '53'
+      - set firewall ipv4 input filter rule 300 protocol 'tcp_udp'
+
+- name: Configure SSH hardening
+  vyos.vyos.vyos_config:
+    lines:
+      - set service ssh ciphers 'aes256-gcm@openssh.com'
+      - set service ssh ciphers 'chacha20-poly1305@openssh.com'
+      - set service ssh ciphers 'aes256-ctr'
+      - set service ssh mac 'hmac-sha2-256-etm@openssh.com'
+      - set service ssh mac 'hmac-sha2-512-etm@openssh.com'
+      - set service ssh key-exchange 'curve25519-sha256@libssh.org'
+      - set service ssh key-exchange 'diffie-hellman-group-exchange-sha256'
+
+- name: Delete default vyos user
+  vyos.vyos.vyos_user:
+    name: vyos
+    state: absent
+
+- name: Configure fail2ban
+  vyos.vyos.vyos_config:
+    src: templates/vyos_fail2ban.j2
 ```
 
-## Validation Loop
+### Task 5: Molecule Test Scenarios
 
-### Level 1: Syntax & Style
-```bash
-# Navigate to role directory
-cd collections/ansible_collections/homelab/nexus
+#### Test 1: nexus.vyos.setup
+**Location**: `collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.setup/`
 
-# Validate ansible syntax
-ansible-playbook --syntax-check site/playbooks/setup-nexus.yaml
+```yaml
+# molecule.yml
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
 
-# Lint the role
-ansible-lint roles/vyos_setup/
+driver:
+  name: docker
 
-# Expected: No errors. If errors, READ the error and fix.
+platforms:
+  - name: vyos-setup-test
+    image: "${MOLECULE_DOCKER_IMAGE:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    pre_build_image: true
+    command: "${MOLECULE_COMMAND:-/lib/systemd/systemd}"
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /dev/kvm:/dev/kvm
+    cgroupns_mode: host
+    privileged: true
+    capabilities:
+      - SYS_ADMIN
+    groups:
+      - nexus
+
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      vyos-setup-test:
+        vyos_network_mode: nat
+        vyos_build_image: false
+        vyos_iso_path: /tmp/test-vyos.iso
+        vyos_configure_router: true
+        vyos_enable_vlans: false
+        vyos_security_hardening: false
+
+verifier:
+  name: ansible
+
+# converge.yml
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Create test VyOS ISO placeholder
+      command: truncate -s 500M /tmp/test-vyos.iso
+      args:
+        creates: /tmp/test-vyos.iso
+
+    - name: Include vyos_setup role
+      include_role:
+        name: homelab.nexus.vyos_setup
+
+# verify.yml
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Check if VM is defined
+      command: virsh list --all
+      register: vm_list
+      changed_when: false
+
+    - name: Verify VyOS VM exists
+      assert:
+        that:
+          - "'vyos-router' in vm_list.stdout"
+        fail_msg: "VyOS VM not found in libvirt"
+
+    - name: Check if VM is running
+      command: virsh domstate vyos-router
+      register: vm_state
+      changed_when: false
+
+    - name: Verify VM is running
+      assert:
+        that:
+          - vm_state.stdout == "running"
+        fail_msg: "VyOS VM is not running"
 ```
 
-### Level 2: Unit Tests each new feature/file/function use existing test patterns
+#### Test 2: nexus.vyos.security_hardening
+```yaml
+# verify.yml
+---
+- name: Verify security hardening
+  hosts: all
+  vars:
+    ansible_user: "{{ vyos_admin_user | default('admin') }}"
+    ansible_ssh_private_key_file: "{{ vyos_admin_ssh_key_file }}"
+    ansible_port: "{{ vyos_ssh_port | default(2222) }}"
+  tasks:
+    - name: Gather VyOS configuration
+      vyos.vyos.vyos_facts:
+        gather_subset:
+          - config
+      delegate_to: "{{ vyos_vm_ip }}"
+
+    - name: Verify firewall default policies
+      assert:
+        that:
+          - ansible_net_config is search('firewall ipv4 input filter default-action drop')
+          - ansible_net_config is search('firewall ipv4 forward filter default-action drop')
+        fail_msg: "Firewall default policies not properly configured"
+
+    - name: Check if default user exists
+      vyos.vyos.vyos_command:
+        commands:
+          - show configuration commands | grep "system login user vyos"
+      delegate_to: "{{ vyos_vm_ip }}"
+      register: default_user_check
+      failed_when: default_user_check.stdout != ""
+
+    - name: Verify SSH hardening
+      assert:
+        that:
+          - ansible_net_config is search('service ssh port 2222')
+          - ansible_net_config is search('service ssh disable-password-authentication')
+        fail_msg: "SSH not properly hardened"
+```
+
+## Desired Directory Structure
+
+```
+collections/ansible_collections/homelab/nexus/
+├── roles/
+│   ├── vyos_image_builder/
+│   │   ├── defaults/main.yml
+│   │   ├── tasks/main.yml
+│   │   ├── handlers/main.yml
+│   │   └── README.md
+│   └── vyos_setup/
+│       ├── defaults/main.yml
+│       ├── tasks/
+│       │   ├── main.yml
+│       │   ├── configure_networks.yaml
+│       │   ├── vyos_config.yaml
+│       │   ├── security_hardening.yaml
+│       │   ├── vlan_setup.yaml
+│       │   └── fail2ban.yaml
+│       ├── templates/
+│       │   ├── cloud-init/
+│       │   │   ├── user-data.j2
+│       │   │   └── network-config.j2
+│       │   ├── vyos_vm_template.yml
+│       │   ├── vyos_firewall_config.j2
+│       │   ├── vyos_fail2ban.j2
+│       │   └── *.xml.j2 (network configs)
+│       ├── handlers/main.yml
+│       └── meta/
+│           └── requirements.yml
+├── extensions/molecule/
+│   ├── nexus.vyos.setup/
+│   ├── nexus.vyos.security_hardening/
+│   └── nexus.vyos.full_integration/
+└── images/
+    └── vyos/
+        ├── .gitignore
+        └── README.md
+```
+
+## Validation Gates
+
 ```bash
-# Test basic VM creation
-cd collections/ansible_collections/homelab/nexus/extensions
+# Pre-execution checks
+cd /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/nexus/extensions/
+
+# Verify current directory
+echo $PWD
+
+# Activate virtual environment
+source ~/ansible-venv/bin/activate
+
+# Syntax validation
+molecule syntax -s nexus.vyos.setup
+molecule syntax -s nexus.vyos.security_hardening
+molecule syntax -s nexus.vyos.full_integration
+
+# Individual test execution
 molecule test -s nexus.vyos.setup
-
-# Test security hardening
 molecule test -s nexus.vyos.security_hardening
-
-# Expected output: All tests pass
-# Common issues:
-# - Missing /dev/kvm: Ensure Docker privileged mode
-# - LibVirt errors: Install libvirt-daemon-system in prepare.yml
-```
-
-### Level 3: Integration Test
-```bash
-# Full integration test with all components
 molecule test -s nexus.vyos.full_integration
 
-# Verify specific functionality:
-# - VM boots successfully
-# - Cloud-init completes
-# - Firewall blocks by default
-# - VLANs are isolated
-# - Management access works
-
-# Manual verification commands:
-virsh list --all  # Should show vyos-router running
-virsh net-list    # Should show WAN, LAN, and VLAN networks
-
-# Test connectivity
-ssh vyos@<vyos_wan_ip> "show configuration"
+# Debugging failed tests
+molecule converge -s nexus.vyos.setup
+molecule verify -s nexus.vyos.setup
+molecule destroy -s nexus.vyos.setup
 ```
 
-## Final validation Checklist
-- [ ] All molecule tests pass: `molecule test`
-- [ ] No ansible-lint errors: `ansible-lint roles/vyos_setup/`
-- [ ] VM successfully boots with VyOS OS
+## Error Handling Strategy
+
+1. **Image Build Failures**:
+   ```yaml
+   - name: Fallback to pre-built image
+     get_url:
+       url: "{{ vyos_fallback_iso_url }}"
+       dest: "{{ vyos_images_dir }}/vyos-fallback.iso"
+     when: vyos_build_failed | default(false)
+   ```
+
+2. **VM Installation Failures**:
+   - Check libvirt permissions: `usermod -aG libvirt,kvm ansible`
+   - Verify KVM support: `kvm-ok`
+   - Check disk space: `df -h /var/lib/libvirt`
+
+3. **Configuration Failures**:
+   - Use `vyos_config` with `backup: yes`
+   - Implement rollback on failure
+   - Log all changes to `/var/log/ansible-vyos.log`
+
+## Implementation Order
+
+1. **Day 1**: Create vyos_image_builder role and test build process
+2. **Day 2**: Update vyos_setup with delegated_vm_install integration
+3. **Day 3**: Implement cloud-init templates and test VM boot
+4. **Day 4**: Apply security hardening configurations
+5. **Day 5**: Create comprehensive molecule tests
+6. **Day 6**: Full integration testing and documentation
+7. **Day 7**: Production deployment preparation
+
+## Success Criteria Checklist
+
+- [ ] VyOS ISO successfully built using Docker method
+- [ ] VM boots with VyOS operating system installed
 - [ ] Cloud-init applies initial configuration
-- [ ] Firewall default action is drop
-- [ ] All 7 VLANs are configured and isolated
-- [ ] SSH access is key-only
-- [ ] Fail2ban is active
-- [ ] Role is idempotent (run twice without changes)
-- [ ] Documentation updated in role README
+- [ ] SSH accessible on port 2222 with key authentication
+- [ ] Default vyos user removed after admin user created
+- [ ] Firewall configured with default-deny policies
+- [ ] All VLANs properly configured and isolated
+- [ ] Fail2ban operational and blocking brute force attempts
+- [ ] Molecule tests pass consistently
+- [ ] Configuration is idempotent
+- [ ] Documentation complete with troubleshooting guide
 
----
+## Known Challenges and Mitigations
 
-## Anti-Patterns to Avoid
-- ❌ Don't hardcode network interfaces (eth0/eth1) - use variables
-- ❌ Don't skip cloud-init - it's required for automation
-- ❌ Don't leave default VyOS password - use SSH keys only
-- ❌ Don't forget to test VLAN isolation
-- ❌ Don't use old VyOS versions without cloud-init support
-- ❌ Don't create VM without checking if it exists first
+1. **VyOS Cloud-Init Limitations**:
+   - VyOS uses custom cloud-init implementation
+   - Solution: Keep cloud-init minimal, do complex config via SSH
 
----
+2. **Docker Build Requirements**:
+   - Needs ~20GB disk space and 4GB RAM
+   - Solution: Pre-build images on capable system
 
-## Additional Context for VyOS Setup
+3. **Nested Virtualization in Tests**:
+   - Docker containers need KVM access
+   - Solution: Use privileged containers with /dev/kvm mounted
 
-### VyOS Cloud-Init Specifics
-VyOS uses a special vyos_config_commands section in cloud-init that runs VyOS configuration commands on first boot. This is different from standard cloud-init.
+4. **Network Interface Ordering**:
+   - MAC addresses must be consistent
+   - Solution: Explicitly set MAC in VM definition
 
-### Network Architecture
-- eth0: WAN interface (DHCP from upstream)
-- eth1: LAN trunk with 7 VLANs
-  - VLAN 10: DMZ (10.0.10.0/24)
-  - VLAN 20: Untrusted WiFi (10.0.20.0/24)
-  - VLAN 30: Trusted WiFi (10.0.30.0/24)
-  - VLAN 40: IoT (10.0.40.0/24)
-  - VLAN 50: Secure (10.0.50.0/24)
-  - VLAN 60: Management (10.0.60.0/24)
-  - VLAN 70: Logging (10.0.70.0/24)
+5. **Test Environment Limitations**:
+   - Can't test bridge mode in containers
+   - Solution: Use NAT mode for tests, document bridge setup
 
-### Security Requirements
-1. Default firewall action: DROP (not ACCEPT)
-2. Explicit allow rules for each service
-3. Inter-VLAN routing controlled by firewall
-4. Management VLAN only for SSH access
-5. Fail2ban on all exposed services
+## Quality Score: 9/10
 
-### Testing Strategy
-1. **nexus.vyos.setup**: Basic VM deployment
-2. **nexus.vyos.security_hardening**: Security validation
-3. **nexus.vyos.full_integration**: Complete system test
+**High Confidence Areas**:
+- Comprehensive implementation plan with detailed code examples
+- Clear testing strategy with executable validation gates
+- Strong security implementation based on best practices
+- Detailed error handling and troubleshooting guides
 
-Each test should be as close to production as possible using Docker containers with KVM support.
+**Areas Requiring Attention**:
+- VyOS cloud-init exact syntax may need adjustment
+- Build process timing depends on system resources
+- Bridge networking testing requires physical hardware
+
+This PRP provides a complete roadmap for implementing a secure, tested VyOS setup that addresses all requirements from the feature specification.
