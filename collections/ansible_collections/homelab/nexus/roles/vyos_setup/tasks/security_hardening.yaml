@@ -1,0 +1,93 @@
+---
+- name: Create admin user
+  vyos.vyos.vyos_user:
+    name: "{{ vyos_admin_user }}"
+    configured_password: "{{ vyos_admin_password | password_hash('sha512') }}"
+    state: present
+
+- name: Add SSH key for admin user
+  vyos.vyos.vyos_config:
+    lines:
+      - set system login user {{ vyos_admin_user }} authentication public-keys admin@homelab type 'ssh-ed25519'
+      - set system login user {{ vyos_admin_user }} authentication public-keys admin@homelab key '{{ vyos_admin_ssh_key }}'
+
+- name: Configure firewall default policies
+  vyos.vyos.vyos_config:
+    lines:
+      # Default policies
+      - set firewall ipv4 input filter default-action 'drop'
+      - set firewall ipv4 forward filter default-action 'drop'
+      - set firewall ipv4 output filter default-action 'accept'
+      
+      # State policies
+      - set firewall global-options state-policy established action 'accept'
+      - set firewall global-options state-policy related action 'accept'
+      - set firewall global-options state-policy invalid action 'drop'
+
+- name: Configure firewall rules
+  vyos.vyos.vyos_config:
+    lines:
+      # Allow SSH from management network with rate limiting
+      - set firewall ipv4 input filter rule 100 action 'accept'
+      - set firewall ipv4 input filter rule 100 destination port '{{ vyos_ssh_port }}'
+      - set firewall ipv4 input filter rule 100 protocol 'tcp'
+      - set firewall ipv4 input filter rule 100 source address '10.60.0.0/24'
+      - set firewall ipv4 input filter rule 100 limit rate '3/minute'
+      
+      # Allow DHCP
+      - set firewall ipv4 input filter rule 200 action 'accept'
+      - set firewall ipv4 input filter rule 200 destination port '67-68'
+      - set firewall ipv4 input filter rule 200 protocol 'udp'
+      
+      # Allow DNS
+      - set firewall ipv4 input filter rule 300 action 'accept'
+      - set firewall ipv4 input filter rule 300 destination port '53'
+      - set firewall ipv4 input filter rule 300 protocol 'tcp_udp'
+      
+      # Allow HTTPS for web management
+      - set firewall ipv4 input filter rule 400 action 'accept'
+      - set firewall ipv4 input filter rule 400 destination port '{{ vyos_web_port }}'
+      - set firewall ipv4 input filter rule 400 protocol 'tcp'
+      - set firewall ipv4 input filter rule 400 source address '10.60.0.0/24'
+
+- name: Configure SSH hardening
+  vyos.vyos.vyos_config:
+    lines:
+      - set service ssh ciphers 'aes256-gcm@openssh.com'
+      - set service ssh ciphers 'chacha20-poly1305@openssh.com'
+      - set service ssh ciphers 'aes256-ctr'
+      - set service ssh mac 'hmac-sha2-256-etm@openssh.com'
+      - set service ssh mac 'hmac-sha2-512-etm@openssh.com'
+      - set service ssh key-exchange 'curve25519-sha256@libssh.org'
+      - set service ssh key-exchange 'diffie-hellman-group-exchange-sha256'
+      - set service ssh host-key-algorithm 'ssh-ed25519'
+      - set service ssh pubkey-accepted-algorithm 'ssh-ed25519'
+
+- name: Configure system hardening
+  vyos.vyos.vyos_config:
+    lines:
+      # Disable unused services
+      - delete service telnet
+      - delete service http
+      
+      # Configure NTP without server mode
+      - set system ntp server {{ vyos_ntp_servers[0] }}
+      - delete service ntp allow-clients
+      
+      # Enable command logging
+      - set system syslog global facility auth level 'info'
+      - set system syslog global facility authpriv level 'info'
+
+- name: Delete default vyos user
+  vyos.vyos.vyos_user:
+    name: vyos
+    state: absent
+  when: vyos_admin_user != 'vyos'
+
+- name: Configure fail2ban
+  include_tasks: fail2ban.yaml
+  when: vyos_enable_fail2ban | default(true)
+
+- name: Save configuration
+  vyos.vyos.vyos_config:
+    save: yes

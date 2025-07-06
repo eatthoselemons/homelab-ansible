@@ -1,0 +1,9 @@
+---
+vyos_build_dir: /tmp/vyos-build
+vyos_images_dir: "{{ playbook_dir }}/../images/vyos"
+vyos_version: 1.4
+vyos_architecture: amd64
+vyos_build_by: 'homelab-ansible'
+vyos_build_type: release
+vyos_docker_image: "vyos/vyos-build:{{ vyos_version }}"
+vyos_build_cleanup: true

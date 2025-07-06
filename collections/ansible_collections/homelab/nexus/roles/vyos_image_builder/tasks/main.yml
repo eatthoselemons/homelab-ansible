@@ -1,0 +1,110 @@
+---
+- name: Check if VyOS image already exists
+  stat:
+    path: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
+  register: vyos_image
+
+- name: Build VyOS image
+  when: not vyos_image.stat.exists
+  block:
+    - name: Install Docker and dependencies
+      apt:
+        name:
+          - docker.io
+          - git
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ansible user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+      notify: cleanup build directory
+
+    - name: Reset connection to apply group changes
+      meta: reset_connection
+
+    - name: Create build directory
+      file:
+        path: "{{ vyos_build_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Clone VyOS build repository
+      git:
+        repo: https://github.com/vyos/vyos-build.git
+        dest: "{{ vyos_build_dir }}/vyos-build"
+        version: "{{ vyos_version }}"
+        force: yes
+
+    - name: Pull VyOS build Docker image
+      docker_image:
+        name: "{{ vyos_docker_image }}"
+        source: pull
+        state: present
+
+    - name: Build VyOS ISO using Docker
+      docker_container:
+        name: vyos-builder
+        image: "{{ vyos_docker_image }}"
+        command: |
+          bash -c "./build-vyos-image iso 
+            --architecture {{ vyos_architecture }} 
+            --build-by '{{ vyos_build_by }}' 
+            --build-type {{ vyos_build_type }}"
+        volumes:
+          - "{{ vyos_build_dir }}/vyos-build:/vyos"
+        working_dir: /vyos
+        detach: no
+        cleanup: yes
+        auto_remove: yes
+
+    - name: Ensure images directory exists
+      file:
+        path: "{{ vyos_images_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Find built ISO
+      find:
+        paths: "{{ vyos_build_dir }}/vyos-build/build"
+        patterns: "vyos-*.iso"
+      register: built_iso
+
+    - name: Verify ISO was built
+      fail:
+        msg: "VyOS ISO build failed - no ISO found in build directory"
+      when: built_iso.files | length == 0
+
+    - name: Copy ISO to images directory
+      copy:
+        src: "{{ built_iso.files[0].path }}"
+        dest: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
+        remote_src: yes
+        mode: '0644'
+
+    - name: Create symlink to latest ISO
+      file:
+        src: "vyos-{{ vyos_version }}.iso"
+        dest: "{{ vyos_images_dir }}/vyos-latest.iso"
+        state: link
+
+  always:
+    - name: Cleanup build directory
+      file:
+        path: "{{ vyos_build_dir }}"
+        state: absent
+      when: vyos_build_cleanup | default(true)
+      tags: [cleanup]
+
+- name: Display image location
+  debug:
+    msg: "VyOS image available at: {{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
