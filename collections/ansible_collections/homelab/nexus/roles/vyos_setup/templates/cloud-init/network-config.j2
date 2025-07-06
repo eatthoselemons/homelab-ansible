@@ -1,0 +1,9 @@
+version: 2
+ethernets:
+  eth0:
+    dhcp4: true
+    dhcp6: false
+  eth1:
+    addresses: [{{ vyos_vm_ip }}/24]
+    dhcp4: false
+    dhcp6: false
