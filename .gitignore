@@ -1,3 +1,5 @@
 roles/ansible_systemd*
 ansible-venv
 ansible/roles/*
+images/
+*.iso
