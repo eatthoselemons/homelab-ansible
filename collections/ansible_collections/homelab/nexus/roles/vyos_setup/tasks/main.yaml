@@ -1,5 +1,10 @@
 ---
-- name: Install required packages
+- name: Build VyOS image if needed
+  include_role:
+    name: homelab.nexus.vyos_image_builder
+  when: vyos_build_image | default(false)
+
+- name: Install libvirt and dependencies
   apt:
     name:
       - qemu-kvm
@@ -7,6 +12,7 @@
       - libvirt-clients
       - bridge-utils
       - python3-libvirt
+      - cloud-image-utils
     state: present
     update_cache: yes
 
@@ -16,71 +22,124 @@
     state: started
     enabled: yes
 
-- name: Ensure libvirt images directory exists
+- name: Create required directories
   file:
-    path: /var/lib/libvirt/images
+    path: "{{ item }}"
     state: directory
     owner: libvirt-qemu
     group: kvm
     mode: '0755'
+  loop:
+    - /var/lib/libvirt/images
+    - /var/lib/libvirt/cloud-init
 
-- name: Create VyOS disk image
+- name: Check for VyOS ISO
+  stat:
+    path: "{{ vyos_iso_path | default(playbook_dir + '/../images/vyos/vyos-current.iso') }}"
+  register: vyos_iso
+  failed_when: not vyos_iso.stat.exists
+
+- name: Create cloud-init configuration
+  when: vyos_cloud_init_enabled | default(true)
+  block:
+    - name: Create cloud-init user data
+      template:
+        src: cloud-init/user-data.j2
+        dest: /var/lib/libvirt/cloud-init/vyos-user-data
+        mode: '0644'
+
+    - name: Create cloud-init network config
+      template:
+        src: cloud-init/network-config.j2
+        dest: /var/lib/libvirt/cloud-init/vyos-network-config
+        mode: '0644'
+
+    - name: Generate cloud-init ISO
+      command: |
+        cloud-localds {{ vyos_cloud_init_iso }} \
+          /var/lib/libvirt/cloud-init/vyos-user-data \
+          --network-config=/var/lib/libvirt/cloud-init/vyos-network-config
+      args:
+        creates: "{{ vyos_cloud_init_iso }}"
+
+- name: Configure libvirt networks
+  include_tasks: configure_networks.yaml
+
+- name: Deploy VyOS VM using delegated_vm_install
   include_role:
-    name: stafwag.qemu_img
+    name: stafwag.delegated_vm_install
   vars:
-    qemu_img:
-      dest: "{{ vyos_vm.disk_path }}"
-      size: "{{ vyos_vm.disk_size | default('20G') }}"
-      format: qcow2
-      overwrite: true
+    vm_ip_address: "{{ vyos_vm_ip }}"
+    vm_kvm_host: "{{ inventory_hostname }}"
+    delegated_vm_install:
+      post:
+        pause:
+          seconds: 30
+        update_etc_hosts: false
+        ensure_running: true
+        package_update: false
+        reboot_after_update: false
+      vm:
+        hostname: "{{ vyos_vm.name }}"
+        path: "/var/lib/libvirt/images/"
+        boot_disk:
+          src: "{{ vyos_iso.stat.path }}"
+        size: "{{ vyos_vm.disk_size }}"
+        disks:
+          - dest: "{{ vyos_cloud_init_iso }}"
+            format: raw
+            src: "{{ vyos_cloud_init_iso }}"
+            type: cdrom
+        memory: "{{ vyos_vm.memory }}"
+        vcpus: "{{ vyos_vm.vcpus }}"
+        interface: "lan"
+        gateway: "{{ ansible_default_ipv4.gateway | default('192.168.122.1') }}"
+        dns_nameservers: "{{ vyos_dns_servers | join(',') }}"
+        wait: 0
+        poweroff: false
+        reboot: false
+  when: not (vyos_test_mode | default(false))
 
-- name: Fix disk image ownership for libvirt
-  file:
-    path: "{{ vyos_vm.disk_path }}"
-    owner: libvirt-qemu
-    group: kvm
-    mode: '0644'
+- name: Create test VM placeholder (test mode)
+  when: vyos_test_mode | default(false)
+  block:
+    - name: Create disk image for testing
+      command: |
+        qemu-img create -f qcow2 {{ vyos_vm.disk_path }} {{ vyos_vm.disk_size }}
+      args:
+        creates: "{{ vyos_vm.disk_path }}"
 
-- name: Create libvirt network configuration for WAN
-  community.libvirt.virt_net:
-    name: wan
-    state: present
-    command: define
-    xml: "{{ lookup('template', 'wan_network.xml.j2') }}"
+    - name: Define VM using XML template
+      community.libvirt.virt:
+        command: define
+        xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
+        autostart: yes
 
-- name: Create libvirt network configuration for LAN
-  community.libvirt.virt_net:
-    name: lan
-    state: present
-    command: define
-    xml: "{{ lookup('template', 'lan_network.xml.j2') }}"
+    - name: Start VM
+      community.libvirt.virt:
+        name: "{{ vyos_vm.name }}"
+        state: running
 
-- name: Start WAN network
-  community.libvirt.virt_net:
-    name: wan
-    state: active
+- name: Wait for VyOS to be accessible
+  wait_for:
+    host: "{{ vyos_vm_ip }}"
+    port: "{{ vyos_ssh_port }}"
+    delay: 60
+    timeout: 600
+  when: not (vyos_test_mode | default(false))
 
-- name: Start LAN network
-  community.libvirt.virt_net:
-    name: lan
-    state: active
+- name: Apply VyOS configuration
+  include_tasks: vyos_config.yaml
+  when: 
+    - vyos_configure_router | default(true)
+    - not (vyos_test_mode | default(false))
 
+- name: Apply security hardening
+  include_tasks: security_hardening.yaml
+  when: 
+    - vyos_security_hardening | default(true)
+    - not (vyos_test_mode | default(false))
 
-- name: Create VyOS VM
-  community.libvirt.virt:
-    command: define
-    xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
-    autostart: yes
-
-- name: Start VyOS VM
-  community.libvirt.virt:
-    name: "{{ vyos_vm.name }}"
-    state: running
-
-- name: Include VLAN network setup
-  ansible.builtin.include_tasks: vlan_setup.yaml
-  when: vyos_enable_vlans | default(true)
-
-- name: Include VyOS configuration
-  ansible.builtin.include_tasks: vyos_config.yaml
-  when: vyos_configure_router | default(true) 
+- name: Configure VLANs
+  include_tasks: vlan_setup.yaml
+  when: vyos_enable_vlans | default(true) 
