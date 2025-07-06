@@ -1,0 +1,6 @@
+---
+- name: cleanup build directory
+  file:
+    path: "{{ vyos_build_dir }}"
+    state: absent
+  when: vyos_build_cleanup | default(true)

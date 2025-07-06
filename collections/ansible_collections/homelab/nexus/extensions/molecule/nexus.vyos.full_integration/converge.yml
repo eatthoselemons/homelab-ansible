@@ -1,0 +1,33 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Create test VyOS ISO placeholder
+      command: truncate -s 500M /tmp/test-vyos.iso
+      args:
+        creates: /tmp/test-vyos.iso
+
+    - name: Install required packages
+      apt:
+        name:
+          - cloud-image-utils
+          - python3-passlib
+          - python3-lxml
+          - bridge-utils
+          - vlan
+        state: present
+        update_cache: yes
+
+    - name: Generate test SSH key
+      openssh_keypair:
+        path: /tmp/test_ssh_key
+        type: rsa
+        size: 2048
+      register: ssh_key
+
+    - name: Include vyos_setup role with full configuration
+      include_role:
+        name: ../../../roles/vyos_setup
+      vars:
+        vyos_admin_ssh_key: "{{ ssh_key.public_key }}"
+        vyos_test_mode: true

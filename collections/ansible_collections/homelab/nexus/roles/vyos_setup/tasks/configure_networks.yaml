@@ -1,0 +1,32 @@
+---
+- name: Create libvirt network configuration for WAN
+  community.libvirt.virt_net:
+    name: wan
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'wan_network.xml.j2') }}"
+
+- name: Create libvirt network configuration for LAN
+  community.libvirt.virt_net:
+    name: lan
+    state: present
+    command: define
+    xml: "{{ lookup('template', 'lan_network.xml.j2') }}"
+
+- name: Start WAN network
+  community.libvirt.virt_net:
+    name: wan
+    state: active
+
+- name: Start LAN network
+  community.libvirt.virt_net:
+    name: lan
+    state: active
+
+- name: Set autostart for networks
+  community.libvirt.virt_net:
+    name: "{{ item }}"
+    autostart: yes
+  loop:
+    - wan
+    - lan

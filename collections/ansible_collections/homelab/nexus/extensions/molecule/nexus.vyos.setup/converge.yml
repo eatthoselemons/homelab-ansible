@@ -1,0 +1,23 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Create test VyOS ISO placeholder
+      command: truncate -s 500M /tmp/test-vyos.iso
+      args:
+        creates: /tmp/test-vyos.iso
+
+    - name: Install required packages for testing
+      apt:
+        name:
+          - cloud-image-utils
+          - python3-lxml
+        state: present
+        update_cache: yes
+
+    - name: Include vyos_setup role
+      include_role:
+        name: ../../../roles/vyos_setup
+      vars:
+        # Override to skip delegated_vm_install in test
+        vyos_test_mode: true

@@ -1,9 +1,0 @@
----
-roles:
-  - name: stafwag.qemu_img
-
-collections:
-  - name: community.general
-  - name: community.libvirt
-  - name: community.docker
-    version: ">=3.10.4" 
