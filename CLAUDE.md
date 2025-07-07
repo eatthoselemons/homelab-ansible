@@ -43,6 +43,7 @@
 - **Handlers**: Service restarts and notifications in `handlers/main.yml`
 - **Testing**: Molecule scenarios for each role with proper isolation
 - **Avoid bash scripts**: use structured Ansible configuration blocks
+- **Newlines**: always have newlines at the end of files
 
 ### 🧪 Testing with Molecule
 - **Navigate to collection test directory**: `cd collections/ansible_collections/homelab/nexus/extensions/`

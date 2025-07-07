@@ -29,3 +29,4 @@
     - name: Confirm harvester test environment ready
       ansible.builtin.debug:
         msg: "Harvester test scenario - environment validated for cluster testing"
+

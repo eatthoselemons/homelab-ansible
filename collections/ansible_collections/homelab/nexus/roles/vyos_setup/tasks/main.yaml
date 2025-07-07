@@ -1,4 +1,50 @@
 ---
+- name: Validate Infisical environment variables
+  when: not (vyos_test_mode | default(false))
+  block:
+    - name: Check INFISICAL_CLIENT_ID is set
+      assert:
+        that:
+          - infisical_client_id is defined
+          - infisical_client_id | length > 0
+        fail_msg: "INFISICAL_CLIENT_ID environment variable must be set. Please export INFISICAL_CLIENT_ID with your Infisical client ID."
+        success_msg: "INFISICAL_CLIENT_ID is set"
+
+    - name: Check INFISICAL_CLIENT_SECRET is set
+      assert:
+        that:
+          - infisical_client_secret is defined
+          - infisical_client_secret | length > 0
+        fail_msg: "INFISICAL_CLIENT_SECRET environment variable must be set. Please export INFISICAL_CLIENT_SECRET with your Infisical client secret."
+        success_msg: "INFISICAL_CLIENT_SECRET is set"
+
+    - name: Check INFISICAL_PROJECT_ID is set
+      assert:
+        that:
+          - infisical_project_id is defined
+          - infisical_project_id | length > 0
+        fail_msg: "INFISICAL_PROJECT_ID environment variable must be set. Please export INFISICAL_PROJECT_ID with your Infisical project ID."
+        success_msg: "INFISICAL_PROJECT_ID is set"
+
+    - name: Validate Infisical connection and secrets
+      assert:
+        that:
+          - vyos_admin_password is defined
+          - vyos_admin_password | length > 0
+          - vyos_ansible_ssh_key is defined
+          - vyos_ansible_ssh_key | length > 0
+          - vyos_ansible_ssh_private_key is defined
+          - vyos_ansible_ssh_private_key | length > 0
+        fail_msg: |
+          Failed to retrieve secrets from Infisical. Please ensure:
+          1. Your Infisical credentials are correct
+          2. The following secrets exist in Infisical:
+             - systemSudoPassword (plain text password)
+             - nexusAnsiblePublicSshKey
+             - nexusAnsiblePrivateSshKey
+          3. You have access to the project: {{ infisical_project_id }}
+        success_msg: "Successfully retrieved all required secrets from Infisical"
+
 - name: Build VyOS image if needed
   include_role:
     name: homelab.nexus.vyos_image_builder
@@ -47,20 +93,17 @@
         src: cloud-init/user-data.j2
         dest: /var/lib/libvirt/cloud-init/vyos-user-data
         mode: '0644'
+      register: cloud_init_user_data
+      # Only regenerate ISO if template changed
+      notify: regenerate cloud-init iso
 
     - name: Create cloud-init network config
       template:
         src: cloud-init/network-config.j2
         dest: /var/lib/libvirt/cloud-init/vyos-network-config
         mode: '0644'
-
-    - name: Generate cloud-init ISO
-      command: |
-        cloud-localds {{ vyos_cloud_init_iso }} \
-          /var/lib/libvirt/cloud-init/vyos-user-data \
-          --network-config=/var/lib/libvirt/cloud-init/vyos-network-config
-      args:
-        creates: "{{ vyos_cloud_init_iso }}"
+      register: cloud_init_network
+      notify: regenerate cloud-init iso
 
 - name: Configure libvirt networks
   include_tasks: configure_networks.yaml
@@ -103,17 +146,32 @@
 - name: Create test VM placeholder (test mode)
   when: vyos_test_mode | default(false)
   block:
+    - name: Generate cloud-init ISO in test mode
+      command: |
+        cloud-localds {{ vyos_cloud_init_iso }} \
+          /var/lib/libvirt/cloud-init/vyos-user-data \
+          --network-config=/var/lib/libvirt/cloud-init/vyos-network-config
+      args:
+        creates: "{{ vyos_cloud_init_iso }}"
+
     - name: Create disk image for testing
       command: |
         qemu-img create -f qcow2 {{ vyos_vm.disk_path }} {{ vyos_vm.disk_size }}
       args:
         creates: "{{ vyos_vm.disk_path }}"
 
+    - name: Check if VM already exists
+      community.libvirt.virt:
+        name: "{{ vyos_vm.name }}"
+        command: list_vms
+      register: existing_vms
+
     - name: Define VM using XML template
       community.libvirt.virt:
         command: define
         xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
         autostart: yes
+      when: vyos_vm.name not in existing_vms.list_vms
 
     - name: Start VM
       community.libvirt.virt:
