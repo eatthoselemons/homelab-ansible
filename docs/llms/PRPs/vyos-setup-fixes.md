@@ -39,13 +39,13 @@ This PRP addresses critical issues in the VyOS setup automation, focusing on fix
 # collections/ansible_collections/homelab/nexus/requirements.yml
 collections:
   - name: infisical.vault
-    version: ">=1.0.0"
+    version: ">=1.1.0"
 ```
 
 #### 1.2 Update defaults/main.yaml with Infisical lookups
 ```yaml
 # Infisical Configuration
-infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID'), '72fdfa59-56b2-4d2e-9dde-cd5a4d5ef3ea' }}"
 infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
 infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID', 'e0ff40f2-e63c-4ffc-9233-a66c46a47b2e') }}"
 infisical_url: "https://app.infisical.com"
