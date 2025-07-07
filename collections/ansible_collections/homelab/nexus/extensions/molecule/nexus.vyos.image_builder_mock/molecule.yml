@@ -1,4 +1,6 @@
 ---
+# Mock test scenario for quick testing without building real VyOS images
+# This scenario uses vyos_test_mode to create dummy ISO files for faster testing
 dependency:
   name: galaxy
   options:
@@ -8,7 +10,7 @@ driver:
   name: docker
 
 platforms:
-  - name: vyos-image-builder-test
+  - name: vyos-image-builder-mock-test
     image: "${MOLECULE_DOCKER_IMAGE:-geerlingguy/docker-ubuntu2404-ansible:latest}"
     pre_build_image: true
     command: "${MOLECULE_COMMAND:-/lib/systemd/systemd}"
@@ -26,7 +28,7 @@ provisioner:
   name: ansible
   inventory:
     host_vars:
-      vyos-image-builder-test:
+      vyos-image-builder-mock-test:
         vyos_build_dir: /tmp/vyos-build
         vyos_images_dir: /tmp/vyos-images
         vyos_version: current
@@ -36,10 +38,10 @@ provisioner:
         vyos_docker_image: "vyos/vyos-build:current"
         vyos_build_cleanup: true
         ansible_user_id: root
-        vyos_test_mode: false
+        vyos_test_mode: true  # Enable mock mode for fast testing
   config_options:
     defaults:
-      timeout: 2700  # 45 minutes for real VyOS build
+      timeout: 300  # 5 minutes for mock testing
 
 verifier:
   name: ansible

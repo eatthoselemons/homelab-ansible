@@ -40,44 +40,43 @@
       ignore_errors: yes
       changed_when: false
 
-    - name: Install Docker and dependencies
-      apt:
-        name:
-          - docker.io
-          - git
-          - curl
-        state: present
-        update_cache: yes
-      when: docker_check.rc != 0
+    - name: Check if running in container with Docker socket
+      stat:
+        path: /var/run/docker.sock
+      register: docker_socket
 
-    - name: Ensure Docker service is running
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-      when: docker_check.rc != 0
+    - name: Docker setup tasks
+      when: 
+        - docker_check.rc != 0
+        - not docker_socket.stat.exists
+      block:
+        - name: Install Docker and dependencies
+          become: yes
+          apt:
+            name:
+              - docker.io
+              - git
+              - curl
+            state: present
+            update_cache: yes
 
-    - name: Install Docker client for Docker-in-Docker
-      apt:
-        name:
-          - docker.io
-          - git
-          - curl
-        state: present
-        update_cache: yes
-      when: docker_check.rc == 0
+        - name: Ensure Docker service is running
+          become: yes
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
 
-    - name: Add ansible user to docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: docker
-        append: yes
-      notify: cleanup build directory
-      when: docker_check.rc != 0
+        - name: Add ansible user to docker group
+          become: yes
+          user:
+            name: "{{ ansible_user_id }}"
+            groups: docker
+            append: yes
+          notify: cleanup build directory
 
     - name: Reset connection to apply group changes
       meta: reset_connection
-      when: docker_check.rc != 0
 
     - name: Create build directory
       file:
@@ -116,17 +115,14 @@
       docker_container:
         name: vyos-builder
         image: "{{ vyos_docker_image }}"
-        command: /bin/bash -c "cd /vyos && ./configure && make iso"
+        command: /bin/bash -c "sudo make clean && sudo ./build-vyos-image --architecture {{ vyos_architecture }} --build-by '{{ vyos_build_by }}' {{ vyos_build_flavor }}"
         volumes:
           - "{{ vyos_build_dir }}/vyos-build:/vyos"
         working_dir: /vyos
         detach: no
         cleanup: yes
         auto_remove: no
-        env:
-          BUILD_BY: "{{ vyos_build_by }}"
-          BUILD_TYPE: "{{ vyos_build_type }}"
-          BUILD_ARCH: "{{ vyos_architecture }}"
+        privileged: yes
       register: build_result
       ignore_errors: yes
 

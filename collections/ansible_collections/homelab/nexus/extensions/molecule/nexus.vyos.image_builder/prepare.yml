@@ -1,0 +1,30 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+    - name: Install Docker client only (not daemon)
+      apt:
+        name:
+          - docker.io
+          - git
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: Create docker group
+      group:
+        name: docker
+        state: present
+
+    - name: Set Docker socket permissions
+      file:
+        path: /var/run/docker.sock
+        group: docker
+        mode: '0660'
+      become: yes
+
+    - name: Add current user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes

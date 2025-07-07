@@ -20,3 +20,6 @@
     - name: Include vyos_image_builder role
       include_role:
         name: ../../../roles/vyos_image_builder
+      vars:
+        # Override to use host Docker socket when in container
+        vyos_docker_socket: /var/run/docker.sock

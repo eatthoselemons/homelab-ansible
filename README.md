@@ -18,6 +18,21 @@ Once that finishes you need to run `source ~/ansible-venv/bin/activate` to enter
 
 ### Running Tests
 
+For comprehensive testing documentation, see [VyOS Testing Guide](docs/testing/vyos-testing.md).
+
+Quick test commands:
+```bash
+# Verify VyOS image
+./scripts/testing/verify-vyos-image.sh
+
+# Run full test suite
+export ANSIBLE_BECOME_PASSWORD='your_sudo_password'
+./scripts/testing/test-vyos-end-to-end.sh
+
+# Run with options (skip build, show help, etc.)
+./scripts/testing/test-vyos-end-to-end.sh --help
+```
+
 ### Done
 
 Then Opnsense should be setup!

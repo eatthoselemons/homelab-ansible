@@ -1,0 +1,23 @@
+---
+# Wrapper playbook to build VyOS image
+# Usage: ansible-playbook build-vyos-image.yml -K
+#
+# The -K flag will prompt for sudo password (required for Docker operations)
+#
+# Optional variables:
+#   -e vyos_version=1.4              # VyOS version to build (default: 1.4)
+#   -e vyos_build_type=release       # Build type: release or development (default: release)
+#   -e vyos_architecture=amd64       # Architecture: amd64 or arm64 (default: amd64)
+#   -e vyos_build_by="Your Name"     # Builder identification (default: homelab-ansible)
+#   -e vyos_images_dir=/custom/path  # Custom output directory
+#   -e vyos_build_cleanup=false      # Keep build directory after completion
+#
+# Example:
+#   ansible-playbook build-vyos-image.yml -e vyos_version=sagitta -e vyos_build_by="John Doe"
+
+- name: Build VyOS Image
+  import_playbook: collections/ansible_collections/homelab/nexus/playbooks/build-vyos-image.yml
+  vars:
+    # Override the default to use project-relative path when running from root
+    vyos_images_dir: "{{ playbook_dir }}/images/vyos"
+    vyos_version: sagitta

@@ -17,7 +17,7 @@
 
     - name: Check ISO exists
       stat:
-        path: "/tmp/vyos-images/vyos-sagitta.iso"
+        path: "/tmp/vyos-images/vyos-current.iso"
       register: iso_file
 
     - name: Verify ISO is created
@@ -29,8 +29,8 @@
     - name: Verify ISO is valid size
       assert:
         that:
-          - iso_file.stat.size > 400000000  # 400MB minimum
-        fail_msg: "VyOS ISO too small ({{ iso_file.stat.size }} bytes), expected > 400MB"
+          - iso_file.stat.size > 500000000  # 500MB minimum for real ISO
+        fail_msg: "VyOS ISO too small ({{ iso_file.stat.size }} bytes), expected > 500MB"
 
     - name: Install file command for ISO verification
       apt:
@@ -38,17 +38,16 @@
         state: present
 
     - name: Verify ISO is bootable format
-      command: file /tmp/vyos-images/vyos-sagitta.iso
+      command: file /tmp/vyos-images/vyos-current.iso
       register: iso_type
       changed_when: false
 
-    - name: Assert ISO is bootable (skip for test mode)
+    - name: Assert ISO is bootable
       assert:
         that:
-          - "'boot' in iso_type.stdout or 'ISO 9660' in iso_type.stdout or 'data' in iso_type.stdout"
-        fail_msg: "ISO is not in expected format: {{ iso_type.stdout }}"
-      vars:
-        msg: "Note: In test mode, ISO is mock data file"
+          - "'ISO 9660' in iso_type.stdout"
+          - "'bootable' in iso_type.stdout"
+        fail_msg: "ISO is not in expected bootable format: {{ iso_type.stdout }}"
 
     - name: Check symlink to latest ISO
       stat:
@@ -68,13 +67,13 @@
       vars:
         vyos_build_dir: /tmp/vyos-build
         vyos_images_dir: /tmp/vyos-images
-        vyos_version: sagitta
+        vyos_version: current
         vyos_architecture: amd64
         vyos_build_by: 'molecule-test'
         vyos_build_type: release
-        vyos_docker_image: "vyos/vyos-build:sagitta"
+        vyos_docker_image: "vyos/vyos-build:current"
         vyos_build_cleanup: true
-        vyos_test_mode: true
+        vyos_test_mode: false
 
     - name: Find all ISO files after second run
       find:
@@ -102,4 +101,4 @@
         
     - name: Display success message
       debug:
-        msg: "VyOS image builder test completed successfully! ISO created at /tmp/vyos-images/vyos-sagitta.iso"
+        msg: "VyOS image builder test completed successfully! ISO created at /tmp/vyos-images/vyos-current.iso"

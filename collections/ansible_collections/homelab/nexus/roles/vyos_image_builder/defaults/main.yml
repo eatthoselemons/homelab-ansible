@@ -1,9 +1,17 @@
 ---
 vyos_build_dir: /tmp/vyos-build
-vyos_images_dir: "{{ playbook_dir }}/../images/vyos"
-vyos_version: 1.4
+# Default images directory - should be overridden in playbooks
+# Common patterns:
+#   From project root: "{{ playbook_dir }}/images/vyos"
+#   Absolute path: "/opt/vyos-images"
+#   Home directory: "{{ ansible_env.HOME }}/vyos-images"
+vyos_images_dir: "/opt/vyos-images"
+vyos_version: current
 vyos_architecture: amd64
 vyos_build_by: 'homelab-ansible'
 vyos_build_type: release
 vyos_docker_image: "vyos/vyos-build:{{ vyos_version }}"
 vyos_build_cleanup: true
+vyos_test_mode: false
+# Build flavor depends on version - current uses 'generic', sagitta uses 'iso'
+vyos_build_flavor: "{{ 'generic' if vyos_version == 'current' else 'iso' }}"
