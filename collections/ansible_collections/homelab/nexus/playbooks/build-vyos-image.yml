@@ -1,0 +1,55 @@
+---
+- name: Build VyOS Image
+  hosts: localhost
+  become: yes
+  gather_facts: yes
+  vars:
+    # Override these variables as needed
+    vyos_version: "sagitta"
+    vyos_build_type: "release"
+    # Default to project-relative path, can be overridden
+    # Note: When called from root wrapper, this will be overridden
+    vyos_images_dir: "{{ playbook_dir }}/../../../../../images/vyos"
+    
+  pre_tasks:
+    - name: Display build information
+      debug:
+        msg: |
+          Building VyOS image with the following settings:
+          - Version: {{ vyos_version }}
+          - Build Type: {{ vyos_build_type }}
+          - Output Directory: {{ vyos_images_dir }}
+          - Docker Image: vyos/vyos-build:{{ vyos_version }}
+          
+    - name: Confirm build
+      pause:
+        prompt: |
+          This will build a VyOS ISO image which can take 20-30 minutes.
+          Press Enter to continue or Ctrl+C to cancel
+      when: not (ansible_check_mode | default(false))
+
+  tasks:
+    - name: Build VyOS image
+      include_role:
+        name: homelab.nexus.vyos_image_builder
+      vars:
+        vyos_test_mode: false  # Ensure we build a real image
+
+  post_tasks:
+    - name: Display build results
+      debug:
+        msg: |
+          Build completed successfully!
+          VyOS image is available at: {{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso
+          
+    - name: Show image details
+      stat:
+        path: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
+      register: iso_info
+      
+    - name: Display image information
+      debug:
+        msg: |
+          Image size: {{ (iso_info.stat.size / 1024 / 1024) | round(2) }} MB
+          Modified time: {{ iso_info.stat.mtime }}
+      when: iso_info.stat.exists

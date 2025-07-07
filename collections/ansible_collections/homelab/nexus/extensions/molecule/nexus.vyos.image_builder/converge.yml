@@ -1,0 +1,25 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Install Python dependencies for Docker modules
+      apt:
+        name:
+          - python3-pip
+          - python3-setuptools
+        state: present
+        update_cache: yes
+
+    - name: Install Python Docker library
+      pip:
+        name:
+          - requests
+          - docker
+        state: present
+
+    - name: Include vyos_image_builder role
+      include_role:
+        name: ../../../roles/vyos_image_builder
+      vars:
+        # Override to use host Docker socket when in container
+        vyos_docker_socket: /var/run/docker.sock

@@ -7,27 +7,73 @@
 - name: Build VyOS image
   when: not vyos_image.stat.exists
   block:
-    - name: Install Docker and dependencies
-      apt:
-        name:
-          - docker.io
-          - git
-          - curl
-        state: present
-        update_cache: yes
+    - name: Create mock ISO for testing
+      when: vyos_test_mode | default(false)
+      block:
+        # Note: Test mode creates images in a different directory (e.g., /tmp/vyos-images)
+        # Production uses ../images/vyos relative to playbook_dir
+        - name: Ensure images directory exists
+          file:
+            path: "{{ vyos_images_dir }}"
+            state: directory
+            mode: '0755'
 
-    - name: Ensure Docker service is running
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
+        - name: Create mock VyOS ISO
+          command: dd if=/dev/zero of="{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso" bs=1M count=450
+          args:
+            creates: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
 
-    - name: Add ansible user to docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: docker
-        append: yes
-      notify: cleanup build directory
+        - name: Create symlink to latest ISO
+          file:
+            src: "vyos-{{ vyos_version }}.iso"
+            dest: "{{ vyos_images_dir }}/vyos-latest.iso"
+            state: link
+
+- name: Build real VyOS image
+  when: 
+    - not vyos_image.stat.exists
+    - not (vyos_test_mode | default(false))
+  block:
+    - name: Check if Docker is already available
+      command: docker version
+      register: docker_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Check if running in container with Docker socket
+      stat:
+        path: /var/run/docker.sock
+      register: docker_socket
+
+    - name: Docker setup tasks
+      when: 
+        - docker_check.rc != 0
+        - not docker_socket.stat.exists
+      block:
+        - name: Install Docker and dependencies
+          become: yes
+          apt:
+            name:
+              - docker.io
+              - git
+              - curl
+            state: present
+            update_cache: yes
+
+        - name: Ensure Docker service is running
+          become: yes
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+
+        - name: Add ansible user to docker group
+          become: yes
+          user:
+            name: "{{ ansible_user_id }}"
+            groups: docker
+            append: yes
+          notify: cleanup build directory
 
     - name: Reset connection to apply group changes
       meta: reset_connection
@@ -44,6 +90,20 @@
         dest: "{{ vyos_build_dir }}/vyos-build"
         version: "{{ vyos_version }}"
         force: yes
+      ignore_errors: yes
+
+    - name: Check git clone result
+      stat:
+        path: "{{ vyos_build_dir }}/vyos-build/.git"
+      register: git_clone_check
+
+    - name: Clone with correct branch if first attempt failed
+      git:
+        repo: https://github.com/vyos/vyos-build.git
+        dest: "{{ vyos_build_dir }}/vyos-build"
+        version: current
+        force: yes
+      when: not git_clone_check.stat.exists
 
     - name: Pull VyOS build Docker image
       docker_image:
@@ -55,17 +115,38 @@
       docker_container:
         name: vyos-builder
         image: "{{ vyos_docker_image }}"
-        command: |
-          bash -c "./build-vyos-image iso 
-            --architecture {{ vyos_architecture }} 
-            --build-by '{{ vyos_build_by }}' 
-            --build-type {{ vyos_build_type }}"
+        command: /bin/bash -c "sudo make clean && sudo ./build-vyos-image --architecture {{ vyos_architecture }} --build-by '{{ vyos_build_by }}' {{ vyos_build_flavor }}"
         volumes:
           - "{{ vyos_build_dir }}/vyos-build:/vyos"
         working_dir: /vyos
         detach: no
         cleanup: yes
-        auto_remove: yes
+        auto_remove: no
+        privileged: yes
+      register: build_result
+      ignore_errors: yes
+
+    - name: Get container logs on failure
+      command: docker logs vyos-builder
+      when: build_result is failed
+      register: build_logs
+      ignore_errors: yes
+
+    - name: Display build logs on failure
+      debug:
+        var: build_logs.stdout_lines
+      when: build_result is failed and build_logs is defined
+
+    - name: Remove builder container
+      docker_container:
+        name: vyos-builder
+        state: absent
+      when: build_result is defined
+
+    - name: Fail if build failed
+      fail:
+        msg: "VyOS build failed. Check logs above for details."
+      when: build_result is failed
 
     - name: Ensure images directory exists
       file:
