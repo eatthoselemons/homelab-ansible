@@ -1,0 +1,7 @@
+---
+- name: regenerate cloud-init iso
+  command: |
+    cloud-localds {{ vyos_cloud_init_iso }} \
+      /var/lib/libvirt/cloud-init/vyos-user-data \
+      --network-config=/var/lib/libvirt/cloud-init/vyos-network-config
+  when: cloud_init_user_data.changed or cloud_init_network.changed

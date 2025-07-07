@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Install network utilities
+      apt:
+        name:
+          - bridge-utils
+          - vlan
+          - iproute2
+          - python3-libvirt
+        state: present
+        update_cache: yes
+
+    - name: Load 8021q module
+      modprobe:
+        name: 8021q
+        state: present
+      ignore_errors: yes  # May fail in container
+
+    - name: Include VLAN setup task
+      include_role:
+        name: ../../../roles/vyos_setup
+        tasks_from: vlan_setup.yaml
