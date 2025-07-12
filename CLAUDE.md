@@ -46,11 +46,15 @@
 - **Newlines**: always have newlines at the end of files
 
 ### 🧪 Testing with Molecule
-- **Navigate to collection test directory**: `cd collections/ansible_collections/homelab/nexus/extensions/`
-- **List All Tests**: `molecule list`
-- **Run test**: `molecule test -s <test-name>`
-- **Syntax check only**: `molecule syntax -s <test-name>`
-- **Check Setup**: `molecule converge -s <test-name>`
+- **Use the test.sh script**: `./test.sh` handles environment setup, virtual environment, and directory navigation automatically
+- **List All Tests**: `./test.sh list` or just `./test.sh`
+- **Run full test**: `./test.sh test <test-name>` (e.g., `./test.sh test nexus.vyos.setup`)
+- **Syntax check only**: `./test.sh syntax <test-name>`
+- **Converge (setup test environment)**: `./test.sh converge <test-name>`
+- **Verify tests**: `./test.sh verify <test-name>`
+- **Destroy test environment**: `./test.sh destroy <test-name>`
+- **Environment variables**: Copy `.env.example` to `.env` and fill in any required secrets for testing
+- **Manual execution**: If needed, use full paths: `/home/user/ansible-venv/bin/molecule` from `collections/ansible_collections/homelab/nexus/extensions/`
 - **Similar To Prod**: all tests should be as similar as possible to deploying on prod
 
 ### 🔒 Security & Secrets
