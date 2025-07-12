@@ -11,6 +11,8 @@
 ### 🧪 Testing & Reliability
 - **Always create molecule unit tests for new features** (functions, classes, routes, etc).
 - **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
+- **Run FULL tests, not just syntax checks** - When verifying that tests work, always run the complete test suite using `./test.sh test <test-name>`. Time is not an issue; the preference is that tests fully work.
+- **Test verification priority**: Full functionality over speed. Always run complete test cycles to ensure proper validation.
 
 ### ✅ Task Completion
 - **Mark completed tasks in `TASK.md`** immediately after finishing them.
