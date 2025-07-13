@@ -9,6 +9,7 @@
           - vlan
           - iproute2
           - python3-libvirt
+          - python3-lxml
         state: present
         update_cache: yes
 

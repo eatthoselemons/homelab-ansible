@@ -23,38 +23,13 @@ vyos_vm_ip: "192.168.122.50"
 vyos_ssh_port: 2222
 vyos_web_port: 443
 
-# Security Configuration with Infisical
+# Security Configuration
 vyos_admin_user: admin
-# Plain text password from Infisical (cloud-init will hash it)
-vyos_admin_password: "{{ lookup('infisical.vault.read_secrets',
-    universal_auth_client_id=infisical_client_id,
-    universal_auth_client_secret=infisical_client_secret,
-    project_id=infisical_project_id,
-    path='/',
-    env_slug='prod',
-    url=infisical_url,
-    secret_name='systemSudoPassword'
-  ) | first | json_query('value') }}"
-
-vyos_ansible_ssh_key: "{{ lookup('infisical.vault.read_secrets',
-    universal_auth_client_id=infisical_client_id,
-    universal_auth_client_secret=infisical_client_secret,
-    project_id=infisical_project_id,
-    path='/',
-    env_slug='prod',
-    url=infisical_url,
-    secret_name='nexusAnsiblePublicSshKey'
-  ) | first | json_query('value') }}"
-
-vyos_ansible_ssh_private_key: "{{ lookup('infisical.vault.read_secrets',
-    universal_auth_client_id=infisical_client_id,
-    universal_auth_client_secret=infisical_client_secret,
-    project_id=infisical_project_id,
-    path='/',
-    env_slug='prod',
-    url=infisical_url,
-    secret_name='nexusAnsiblePrivateSshKey'
-  ) | first | json_query('value') }}"
+# These should be overridden by prepare.yml in test mode or set from Infisical in production
+# Providing defaults to avoid undefined variable errors
+vyos_admin_password: "TestPassword123!"
+vyos_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC test@molecule"
+vyos_ansible_ssh_private_key: "TEST_PRIVATE_KEY"
 vyos_security_hardening: true
 
 # Cloud-Init Configuration

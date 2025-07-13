@@ -16,12 +16,12 @@
 
     - name: Check if real VyOS ISO exists
       stat:
-        path: "/images/vyos/vyos-current.iso"
+        path: "{{ vyos_iso_path | default('/images/vyos/vyos-current.iso') }}"
       register: vyos_iso_check
       failed_when: not vyos_iso_check.stat.exists
 
     - name: Verify VyOS ISO is valid
-      command: file /images/vyos/vyos-current.iso
+      command: "file {{ vyos_iso_path | default('/images/vyos/vyos-current.iso') }}"
       register: iso_type
       changed_when: false
       failed_when: "'ISO 9660' not in iso_type.stdout"

@@ -1,0 +1,63 @@
+---
+# Mock network operations for testing
+# This file simulates network creation without actually using libvirt
+
+- name: Create mock network state directory
+  file:
+    path: /tmp/vyos-test-mock/networks
+    state: directory
+    mode: '0755'
+
+- name: Create mock WAN network definition
+  copy:
+    content: |
+      <network>
+        <name>wan</name>
+        <forward mode='nat'/>
+        <bridge name='virbr1' stp='on' delay='0'/>
+        <ip address='192.168.100.1' netmask='255.255.255.0'>
+          <dhcp>
+            <range start='192.168.100.2' end='192.168.100.254'/>
+          </dhcp>
+        </ip>
+      </network>
+    dest: /tmp/vyos-test-mock/networks/wan.xml
+    mode: '0644'
+
+- name: Create mock LAN network definition
+  copy:
+    content: |
+      <network>
+        <name>lan</name>
+        <bridge name='virbr2' stp='on' delay='0'/>
+        <ip address='192.168.122.1' netmask='255.255.255.0'>
+          <dhcp>
+            <range start='192.168.122.2' end='192.168.122.254'/>
+          </dhcp>
+        </ip>
+      </network>
+    dest: /tmp/vyos-test-mock/networks/lan.xml
+    mode: '0644'
+
+- name: Create mock network list
+  copy:
+    content: |
+      wan              active     yes           yes
+      lan              active     yes           yes
+    dest: /tmp/vyos-test-mock/virsh-net-list.txt
+    mode: '0644'
+
+- name: Set mock network facts
+  set_fact:
+    vyos_networks_created: true
+    vyos_wan_network: "active"
+    vyos_lan_network: "active"
+    vyos_networks_mock: true
+
+- name: Display mock network info
+  debug:
+    msg: |
+      Mock networks created:
+      - WAN: {{ vyos_wan_network }}
+      - LAN: {{ vyos_lan_network }}
+      - Mock Mode: {{ vyos_networks_mock }}

@@ -1,4 +1,13 @@
 ---
+- name: Check if we have required secrets
+  when: vyos_test_mode | default(false)
+  assert:
+    that:
+      - vyos_admin_password is defined
+      - vyos_ansible_ssh_key is defined
+      - vyos_ansible_ssh_private_key is defined
+    fail_msg: "Test mode requires vyos_admin_password, vyos_ansible_ssh_key, and vyos_ansible_ssh_private_key to be set by prepare.yml"
+
 - name: Validate Infisical environment variables
   when: not (vyos_test_mode | default(false))
   block:
@@ -26,7 +35,37 @@
         fail_msg: "INFISICAL_PROJECT_ID environment variable must be set. Please export INFISICAL_PROJECT_ID with your Infisical project ID."
         success_msg: "INFISICAL_PROJECT_ID is set"
 
-    - name: Validate Infisical connection and secrets
+    - name: Retrieve secrets from Infisical
+      set_fact:
+        vyos_admin_password: "{{ lookup('infisical.vault.read_secrets',
+            universal_auth_client_id=infisical_client_id,
+            universal_auth_client_secret=infisical_client_secret,
+            project_id=infisical_project_id,
+            path='/',
+            env_slug='prod',
+            url=infisical_url,
+            secret_name='systemSudoPassword'
+          ) | first | json_query('value') }}"
+        vyos_ansible_ssh_key: "{{ lookup('infisical.vault.read_secrets',
+            universal_auth_client_id=infisical_client_id,
+            universal_auth_client_secret=infisical_client_secret,
+            project_id=infisical_project_id,
+            path='/',
+            env_slug='prod',
+            url=infisical_url,
+            secret_name='nexusAnsiblePublicSshKey'
+          ) | first | json_query('value') }}"
+        vyos_ansible_ssh_private_key: "{{ lookup('infisical.vault.read_secrets',
+            universal_auth_client_id=infisical_client_id,
+            universal_auth_client_secret=infisical_client_secret,
+            project_id=infisical_project_id,
+            path='/',
+            env_slug='prod',
+            url=infisical_url,
+            secret_name='nexusAnsiblePrivateSshKey'
+          ) | first | json_query('value') }}"
+
+    - name: Validate retrieved secrets
       assert:
         that:
           - vyos_admin_password is defined
@@ -107,6 +146,11 @@
 
 - name: Configure libvirt networks
   include_tasks: configure_networks.yaml
+  when: not (vyos_test_mode | default(false))
+
+- name: Use mock network operations in test mode
+  when: vyos_test_mode | default(false)
+  include_tasks: test_mocks/mock_network.yaml
 
 - name: Deploy VyOS VM using delegated_vm_install
   include_role:
@@ -143,40 +187,31 @@
         reboot: false
   when: not (vyos_test_mode | default(false))
 
-- name: Create test VM placeholder (test mode)
+- name: Use mock VM operations in test mode
   when: vyos_test_mode | default(false)
-  block:
-    - name: Generate cloud-init ISO in test mode
-      command: |
-        cloud-localds {{ vyos_cloud_init_iso }} \
-          /var/lib/libvirt/cloud-init/vyos-user-data \
-          --network-config=/var/lib/libvirt/cloud-init/vyos-network-config
-      args:
-        creates: "{{ vyos_cloud_init_iso }}"
+  include_tasks: test_mocks/mock_vm.yaml
 
-    - name: Create disk image for testing
-      command: |
-        qemu-img create -f qcow2 {{ vyos_vm.disk_path }} {{ vyos_vm.disk_size }}
-      args:
-        creates: "{{ vyos_vm.disk_path }}"
+- name: Check if VM already exists
+  community.libvirt.virt:
+    name: "{{ vyos_vm.name }}"
+    command: list_vms
+  register: existing_vms
+  when: not (vyos_test_mode | default(false))
 
-    - name: Check if VM already exists
-      community.libvirt.virt:
-        name: "{{ vyos_vm.name }}"
-        command: list_vms
-      register: existing_vms
+- name: Define VM using XML template
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
+    autostart: yes
+  when: 
+    - not (vyos_test_mode | default(false))
+    - vyos_vm.name not in existing_vms.list_vms
 
-    - name: Define VM using XML template
-      community.libvirt.virt:
-        command: define
-        xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
-        autostart: yes
-      when: vyos_vm.name not in existing_vms.list_vms
-
-    - name: Start VM
-      community.libvirt.virt:
-        name: "{{ vyos_vm.name }}"
-        state: running
+- name: Start VM
+  community.libvirt.virt:
+    name: "{{ vyos_vm.name }}"
+    state: running
+  when: not (vyos_test_mode | default(false))
 
 - name: Wait for VyOS to be accessible
   wait_for:

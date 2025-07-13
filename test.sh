@@ -20,6 +20,10 @@ export PATH="${VENV_PATH}/bin:$PATH"
 # Set ANSIBLE environment variables if needed
 export ANSIBLE_HOST_KEY_CHECKING=False
 
+# Set VyOS image path for tests that need it
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export VYOS_IMAGE_PATH="${PROJECT_ROOT}/images/vyos"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
