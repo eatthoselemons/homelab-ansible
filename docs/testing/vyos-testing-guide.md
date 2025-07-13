@@ -104,10 +104,16 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-Key variables:
-- `INFISICAL_TOKEN` - For secret management
-- `VYOS_USER` / `VYOS_PASSWORD` - Test credentials
-- `VYOS_IMAGE_PATH` - Override image location
+### Required for Tests
+- `INFISICAL_CLIENT_ID` - Universal Auth client ID from Infisical
+- `INFISICAL_CLIENT_SECRET` - Universal Auth client secret
+- `INFISICAL_PROJECT_ID` - Your Infisical project ID
+
+### Optional Variables
+- `VYOS_IMAGE_PATH` - Override default image location
+- `INFISICAL_URL` - Custom Infisical instance (defaults to cloud)
+
+See [Infisical Setup Guide](../setup/infisical-setup.md) for detailed configuration instructions.
 
 ## Test Modes
 
