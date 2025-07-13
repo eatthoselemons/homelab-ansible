@@ -1,9 +1,14 @@
 ---
 # Test-specific variables for VyOS setup molecule test
-vyos_test_mode: true
+vyos_test_mode: false
 
 # Override any production defaults for testing
 vyos_configure_router: true
 vyos_enable_vlans: true
 vyos_security_hardening: true
 vyos_cloud_init_enabled: true
+
+# VM settings for test
+vyos_vm_name: vyos-setup-test
+vyos_vm_memory: 2048
+vyos_vm_cpus: 2

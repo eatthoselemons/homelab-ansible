@@ -2,19 +2,15 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: Create test VyOS ISO placeholder
-      command: truncate -s 500M /tmp/test-vyos.iso
-      args:
-        creates: /tmp/test-vyos.iso
-
-    - name: Install required packages
-      apt:
-        name:
-          - cloud-image-utils
-          - python3-passlib
-          - python3-lxml
-        state: present
-        update_cache: yes
+    - name: Verify VyOS ISO exists
+      stat:
+        path: "{{ vyos_iso_path }}"
+      register: vyos_iso_check
+      
+    - name: Fail if VyOS ISO not found
+      fail:
+        msg: "VyOS ISO not found at {{ vyos_iso_path }}. Please ensure the image is available."
+      when: not vyos_iso_check.stat.exists
 
     - name: Generate test SSH key
       openssh_keypair:
@@ -28,4 +24,7 @@
         name: ../../../roles/vyos_setup
       vars:
         vyos_admin_ssh_key: "{{ ssh_key.public_key }}"
-        vyos_test_mode: true
+        vyos_test_mode: false
+        vyos_vm_name: vyos-security-test
+        vyos_vm_memory: 2048
+        vyos_vm_cpus: 2

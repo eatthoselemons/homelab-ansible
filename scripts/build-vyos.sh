@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default values
-VYOS_VERSION="sagitta"
+VYOS_VERSION="current"
 VYOS_BUILD_TYPE="release"
 VYOS_ARCHITECTURE="amd64"
 FORCE_BUILD=false
@@ -48,8 +48,8 @@ VyOS Image Builder
 Usage: $0 [OPTIONS]
 
 Options:
-    -v, --version VERSION      VyOS version to build (default: sagitta)
-                              Options: current, sagitta, circinus
+    -v, --version VERSION      VyOS version to build (default: current)
+                              Options: current, current, circinus
     -t, --type TYPE           Build type (default: release)
                               Options: release, development
     -a, --arch ARCH           Architecture (default: amd64)
@@ -59,7 +59,7 @@ Options:
     -h, --help                Show this help message
 
 Examples:
-    # Build default VyOS image (sagitta release)
+    # Build default VyOS image (current release)
     $0
 
     # Build current development version

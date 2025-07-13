@@ -35,9 +35,9 @@
         fail_msg: "INFISICAL_PROJECT_ID environment variable must be set. Please export INFISICAL_PROJECT_ID with your Infisical project ID."
         success_msg: "INFISICAL_PROJECT_ID is set"
 
-    - name: Retrieve secrets from Infisical
+    - name: Retrieve systemSudoPassword from Infisical
       set_fact:
-        vyos_admin_password: "{{ lookup('infisical.vault.read_secrets',
+        vyos_admin_password_raw: "{{ lookup('infisical.vault.read_secrets',
             universal_auth_client_id=infisical_client_id,
             universal_auth_client_secret=infisical_client_secret,
             project_id=infisical_project_id,
@@ -45,7 +45,15 @@
             env_slug='prod',
             url=infisical_url,
             secret_name='systemSudoPassword'
-          ) | first | json_query('value') }}"
+          ) }}"
+
+    - name: Extract password value
+      set_fact:
+        vyos_admin_password: "{{ vyos_admin_password_raw.value }}"
+      when: vyos_admin_password_raw is defined
+
+    - name: Retrieve remaining secrets from Infisical
+      set_fact:
         vyos_ansible_ssh_key: "{{ lookup('infisical.vault.read_secrets',
             universal_auth_client_id=infisical_client_id,
             universal_auth_client_secret=infisical_client_secret,
@@ -54,7 +62,7 @@
             env_slug='prod',
             url=infisical_url,
             secret_name='nexusAnsiblePublicSshKey'
-          ) | first | json_query('value') }}"
+          ).value }}"
         vyos_ansible_ssh_private_key: "{{ lookup('infisical.vault.read_secrets',
             universal_auth_client_id=infisical_client_id,
             universal_auth_client_secret=infisical_client_secret,
@@ -63,7 +71,7 @@
             env_slug='prod',
             url=infisical_url,
             secret_name='nexusAnsiblePrivateSshKey'
-          ) | first | json_query('value') }}"
+          ).value }}"
 
     - name: Validate retrieved secrets
       assert:
@@ -171,12 +179,15 @@
         path: "/var/lib/libvirt/images/"
         boot_disk:
           src: "{{ vyos_iso.stat.path }}"
+          remote_src: true
         size: "{{ vyos_vm.disk_size }}"
         disks:
-          - dest: "{{ vyos_cloud_init_iso }}"
+          - name: "vyos-cloud-init.iso"
+            dest: "{{ vyos_cloud_init_iso }}"
             format: raw
             src: "{{ vyos_cloud_init_iso }}"
             type: cdrom
+            remote_src: true
         memory: "{{ vyos_vm.memory }}"
         vcpus: "{{ vyos_vm.vcpus }}"
         interface: "lan"

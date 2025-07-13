@@ -45,7 +45,7 @@ The VyOS testing infrastructure supports multiple test levels:
 
 #### Simple Test Execution
 ```bash
-# Run a single test
+# Run a single test (auto-detects test mode based on VyOS image)
 ./test.sh test nexus.vyos.setup
 
 # Run syntax check only
@@ -59,6 +59,12 @@ The VyOS testing infrastructure supports multiple test levels:
 
 # Run with debug output
 ./test.sh --debug test nexus.vyos.setup
+
+# Force mock test mode (regardless of image availability)
+./test.sh --mock test nexus.vyos.setup
+
+# Force real test mode (requires valid VyOS image)
+./test.sh --real test nexus.vyos.setup
 ```
 
 #### Smart Test Runner
@@ -105,6 +111,11 @@ Key variables:
 
 ## Test Modes
 
+### Automatic Test Mode Detection
+The `test.sh` script automatically detects the best test mode:
+- **Real Mode**: When a valid VyOS ISO image is found (>500MB, ISO 9660 format)
+- **Mock Mode**: When no valid image is found or only mock images are present
+
 ### Container Testing
 When running in Docker containers:
 - Only unit tests run by default
@@ -118,11 +129,12 @@ When running on physical/virtual machines:
 - Actual network bridges are configured
 
 ### Test Mode Detection
-The test runner automatically detects:
+The test runners automatically detect:
 - Container vs bare metal environment
 - KVM availability
 - Privilege level
 - VyOS image type (real vs mock)
+- Valid VyOS image presence using `verify-vyos-image.sh`
 
 ## Troubleshooting
 

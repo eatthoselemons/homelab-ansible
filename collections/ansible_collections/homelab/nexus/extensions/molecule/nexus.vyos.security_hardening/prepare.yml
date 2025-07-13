@@ -15,7 +15,6 @@
           - python3-passlib
           - python3-lxml
           - python3-libvirt
-          - openssh-client
         state: present
         update_cache: yes
       become: yes
@@ -62,25 +61,3 @@
       fail:
         msg: "VyOS image not mounted at /opt/vyos/vyos-current.iso"
       when: not vyos_image.stat.exists
-
-    - name: Create test SSH key pair
-      command: ssh-keygen -t rsa -b 2048 -f /tmp/test_ssh_key -N ""
-      args:
-        creates: /tmp/test_ssh_key
-
-    - name: Read test SSH public key
-      slurp:
-        src: /tmp/test_ssh_key.pub
-      register: test_ssh_pub_key
-
-    - name: Read test SSH private key
-      slurp:
-        src: /tmp/test_ssh_key
-      register: test_ssh_priv_key
-
-    - name: Set test values for VyOS
-      set_fact:
-        # Plain text password for testing
-        vyos_admin_password: "TestPassword123!"
-        vyos_ansible_ssh_key: "{{ test_ssh_pub_key.content | b64decode | trim }}"
-        vyos_ansible_ssh_private_key: "{{ test_ssh_priv_key.content | b64decode }}"

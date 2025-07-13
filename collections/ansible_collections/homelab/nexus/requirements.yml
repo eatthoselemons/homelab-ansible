@@ -4,3 +4,15 @@ collections:
     version: ">=1.1.0"
   - name: community.libvirt
     version: ">=1.4.0"
+  - name: community.general
+    version: ">=1.0.0"
+  - name: vyos.vyos
+    version: ">=4.0.0"
+
+roles:
+  - name: stafwag.delegated_vm_install
+    version: ">=2.0.3"
+  - name: stafwag.libvirt
+  - name: stafwag.qemu_img
+  - name: stafwag.cloud_localds
+  - name: stafwag.virt_install_import

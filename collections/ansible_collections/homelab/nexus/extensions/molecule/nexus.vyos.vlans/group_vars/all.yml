@@ -1,7 +1,94 @@
 ---
 # Test-specific variables for VyOS VLANs molecule test
-vyos_test_mode: true
+vyos_test_mode: false
 
 # VLAN test specific settings
 vyos_configure_host_vlans: false  # Don't try to configure host VLANs in container
 vyos_use_ovs: false  # Don't try to use OpenVSwitch in container
+
+# VM settings for test
+vyos_vm_name: vyos-vlans-test
+vyos_vm_memory: 2048
+vyos_vm_cpus: 2
+
+# Define VLANs for testing - minimal set to verify functionality
+vyos_vlan_networks:
+  - name: "dmz"
+    vlan_id: 10
+    description: "DMZ Network - External facing services"
+    subnet: "10.10.0.0/16"
+    gateway: "10.10.0.1"
+    domain: "public.awynn.info"
+    bridge_name: "br-dmz"
+    dhcp_enabled: true
+    dhcp_range: "10.10.0.100-10.10.0.199"
+    dns_servers:
+      - "10.10.0.1"
+      - "1.1.1.1"
+  - name: "untrusted-wifi"
+    vlan_id: 20
+    description: "Untrusted WiFi - Guest devices"
+    subnet: "10.20.0.0/16"
+    gateway: "10.20.0.1"
+    bridge_name: "br-untrusted"
+    dhcp_enabled: true
+    dhcp_range: "10.20.0.100-10.20.0.199"
+    dns_servers:
+      - "10.20.0.1"
+      - "1.1.1.1"
+  - name: "trusted-wifi"
+    vlan_id: 30
+    description: "Trusted WiFi - Authorized devices"
+    subnet: "10.30.0.0/16"
+    gateway: "10.30.0.1"
+    bridge_name: "br-trusted"
+    dhcp_enabled: true
+    dhcp_range: "10.30.0.100-10.30.0.199"
+    dns_servers:
+      - "10.30.0.1"
+      - "1.1.1.1"
+  - name: "iot"
+    vlan_id: 40
+    description: "IoT Network - Isolated IoT devices"
+    subnet: "10.40.0.0/16"
+    gateway: "10.40.0.1"
+    bridge_name: "br-iot"
+    dhcp_enabled: true
+    dhcp_range: "10.40.0.100-10.40.0.199"
+    dns_servers:
+      - "10.40.0.1"
+      - "1.1.1.1"
+  - name: "secure"
+    vlan_id: 50
+    description: "Secure Network - Main trusted network"
+    subnet: "10.50.0.0/16"
+    gateway: "10.50.0.1"
+    domain: "private.awynn.info"
+    bridge_name: "br-secure"
+    dhcp_enabled: true
+    dhcp_range: "10.50.0.100-10.50.0.199"
+    dns_servers:
+      - "10.50.0.1"
+      - "1.1.1.1"
+  - name: "management"
+    vlan_id: 60
+    description: "Management Network - Server administration"
+    subnet: "10.60.0.0/16"
+    gateway: "10.60.0.1"
+    domain: "management.awynn.info"
+    bridge_name: "br-mgmt"
+    dhcp_enabled: true
+    dhcp_range: "10.60.0.100-10.60.0.199"
+    dns_servers:
+      - "10.60.0.1"
+      - "1.1.1.1"
+  - name: "logging"
+    vlan_id: 70
+    description: "Logging Network - System monitoring"
+    subnet: "10.70.0.0/16"
+    gateway: "10.70.0.1"
+    domain: "logs.awynn.info"
+    bridge_name: "br-logging"
+    dhcp_enabled: false
+    dns_servers:
+      - "10.70.0.1"
