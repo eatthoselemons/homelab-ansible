@@ -40,8 +40,6 @@ provisioner:
         vyos_enable_vlans: true  # Enable VLAN testing
         vyos_security_hardening: true
         vyos_cloud_init_enabled: true
-        # Override for test environment
-        vyos_test_mode: true
         # Test-specific Infisical config
         infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
         infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"

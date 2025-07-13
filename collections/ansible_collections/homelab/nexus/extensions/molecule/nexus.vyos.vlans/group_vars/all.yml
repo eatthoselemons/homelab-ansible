@@ -1,0 +1,7 @@
+---
+# Test-specific variables for VyOS VLANs molecule test
+vyos_test_mode: true
+
+# VLAN test specific settings
+vyos_configure_host_vlans: false  # Don't try to configure host VLANs in container
+vyos_use_ovs: false  # Don't try to use OpenVSwitch in container

@@ -1,0 +1,8 @@
+---
+# Test-specific variables for VyOS security hardening molecule test
+vyos_test_mode: true
+
+# Security test specific settings
+vyos_security_hardening: true
+vyos_fail2ban_enabled: true
+vyos_ssh_hardening: true

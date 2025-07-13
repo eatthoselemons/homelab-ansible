@@ -8,10 +8,6 @@
         state: present
         update_cache: true
 
-    - name: Set test mode fact
-      set_fact:
-        vyos_test_mode: true
-
     - name: Create test SSH key pair
       command: ssh-keygen -t rsa -b 2048 -f /tmp/test_ssh_key -N ""
       args:

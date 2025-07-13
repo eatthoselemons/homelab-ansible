@@ -24,9 +24,9 @@
   loop: "{{ vyos_vlan_networks }}"
 
 - name: Create mock bridge interfaces
-  file:
-    path: "/tmp/vyos-test-mock/bridges/{{ item.bridge_name }}"
-    state: touch
+  copy:
+    content: "{{ item.bridge_name }} mock interface"
+    dest: "/tmp/vyos-test-mock/bridges/{{ item.bridge_name }}"
     mode: '0644'
   loop: "{{ vyos_vlan_networks }}"
 

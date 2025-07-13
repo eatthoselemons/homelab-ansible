@@ -1,0 +1,9 @@
+---
+# Test-specific variables for VyOS setup molecule test
+vyos_test_mode: true
+
+# Override any production defaults for testing
+vyos_configure_router: true
+vyos_enable_vlans: true
+vyos_security_hardening: true
+vyos_cloud_init_enabled: true
