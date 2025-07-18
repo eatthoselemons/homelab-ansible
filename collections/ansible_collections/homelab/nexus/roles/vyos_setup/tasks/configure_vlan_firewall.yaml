@@ -1,0 +1,63 @@
+---
+# Configure firewall rules for a specific VLAN
+# This file is included in a loop from vyos_config.yaml
+
+- name: Configure firewall for VLAN {{ vlan.vlan_id }} ({{ vlan.name }})
+  vyos.vyos.vyos_config:
+    lines:
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN default-action drop"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN description '{{ vlan.description }} inbound'"
+      
+      # Allow established and related connections
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 10 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 10 state established enable"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 10 state related enable"
+      
+      # Allow loopback
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 20 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 20 source address 127.0.0.0/8"
+      
+      # Allow ping
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 30 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 30 protocol icmp"
+
+# Add specific rules for trusted-wifi VLAN
+- name: Configure trusted-wifi specific rules
+  vyos.vyos.vyos_config:
+    lines:
+      # Trusted WiFi can access Secure network
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 destination address 10.50.0.0/24"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 description 'Allow access to Secure network'"
+  when: vlan.name == 'trusted-wifi'
+
+# Add specific rules for secure VLAN
+- name: Configure secure VLAN specific rules
+  vyos.vyos.vyos_config:
+    lines:
+      # Secure network can access Trusted WiFi
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 destination address 10.30.0.0/24"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 description 'Allow access to Trusted WiFi'"
+      
+      # Secure network can access Management via jumphost
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 110 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 110 destination address {{ vyos_jumphost_ip }}"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 110 description 'Allow access to jumphost'"
+  when: vlan.name == 'secure'
+
+# Add specific rules for management VLAN
+- name: Configure management VLAN specific rules
+  vyos.vyos.vyos_config:
+    lines:
+      # Management network - only allow from jumphost
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 action accept"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 source address {{ vyos_jumphost_ip }}"
+      - "set firewall name VLAN{{ vlan.vlan_id }}_IN rule 100 description 'Allow access from jumphost only'"
+  when: vlan.name == 'management'
+
+# Apply firewall to VLAN interface
+- name: Apply firewall to VLAN interface
+  vyos.vyos.vyos_config:
+    lines:
+      - "set interfaces ethernet eth1 vif {{ vlan.vlan_id }} firewall in name VLAN{{ vlan.vlan_id }}_IN"

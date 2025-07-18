@@ -1,6 +1,10 @@
 ---
 - name: Converge
   hosts: all
+  vars:
+    vyos_base_image: "{{ playbook_dir }}/../../../../../../images/vyos/vyos-base.qcow2"
+    vyos_test_image: "/tmp/vyos-test-{{ lookup('pipe', 'date +%s%N') }}.qcow2"
+
   tasks:
     - name: Install required packages for testing
       apt:
@@ -14,22 +18,44 @@
         state: present
         update_cache: true
 
-    - name: Check if real VyOS ISO exists
+    - name: Check if base image exists
       stat:
-        path: "{{ vyos_iso_path | default('/opt/vyos/vyos-current.iso') }}"
-      register: vyos_iso_check
-      
-    - name: Fail if VyOS ISO not found
-      fail:
-        msg: "VyOS ISO not found at {{ vyos_iso_path | default('/opt/vyos/vyos-current.iso') }}. Please ensure the image is available."
-      when: not vyos_iso_check.stat.exists
+        path: "{{ vyos_base_image }}"
+      register: base_image_stat
 
-    - name: Verify VyOS ISO is valid
-      command: "file {{ vyos_iso_path | default('/opt/vyos/vyos-current.iso') }}"
-      register: iso_type
-      changed_when: false
-      failed_when: "'ISO 9660' not in iso_type.stdout"
+    - name: Build base image if it does not exist
+      when: not base_image_stat.stat.exists
+      block:
+        - name: Check if real VyOS ISO exists
+          stat:
+            path: "{{ vyos_iso_path | default('/opt/vyos/vyos-current.iso') }}"
+          register: vyos_iso_check
 
-    - name: Include vyos_setup role
+        - name: Fail if VyOS ISO not found
+          fail:
+            msg: "VyOS ISO not found at {{ vyos_iso_path | default('/opt/vyos/vyos-current.iso') }}. Please ensure the image is available."
+          when: not vyos_iso_check.stat.exists
+
+        - name: Verify VyOS ISO is valid
+          command: "file {{ vyos_iso_path | default('/opt/vyos/vyos-current.iso') }}"
+          register: iso_type
+          changed_when: false
+          failed_when: "'ISO 9660' not in iso_type.stdout"
+
+        - name: Create base image with vyos_setup
+          include_role:
+            name: ../../../roles/vyos_setup
+          vars:
+            vyos_create_base_image: true
+            vyos_vm_disk_path: "{{ vyos_base_image }}"
+
+    - name: Create linked clone for test
+      command: "qemu-img create -f qcow2 -b {{ vyos_base_image }} {{ vyos_test_image }}"
+      changed_when: true
+
+    - name: Run tests against the linked clone
       include_role:
         name: ../../../roles/vyos_setup
+      vars:
+        vyos_create_base_image: false
+        vyos_vm_disk_path: "{{ vyos_test_image }}"

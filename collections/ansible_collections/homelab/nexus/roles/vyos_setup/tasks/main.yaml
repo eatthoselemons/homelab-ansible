@@ -160,9 +160,12 @@
   when: vyos_test_mode | default(false)
   include_tasks: test_mocks/mock_network.yaml
 
-- name: Deploy VyOS VM using delegated_vm_install
-  include_role:
-    name: stafwag.delegated_vm_install
+- name: Create base VyOS VM if requested
+  when: vyos_create_base_image | default(false)
+  block:
+    - name: Deploy VyOS VM using delegated_vm_install
+      include_role:
+        name: stafwag.delegated_vm_install
   vars:
     vm_ip_address: "{{ vyos_vm_ip }}"
     vm_kvm_host: "{{ inventory_hostname }}"
@@ -214,6 +217,8 @@
     command: define
     xml: "{{ lookup('template', 'vyos_vm.xml.j2') }}"
     autostart: yes
+  vars:
+    vyos_vm_disk_path: "{{ vyos_vm_disk_path }}"
   when: 
     - not (vyos_test_mode | default(false))
     - vyos_vm.name not in existing_vms.list_vms
@@ -237,6 +242,12 @@
   when: 
     - vyos_configure_router | default(true)
     - not (vyos_test_mode | default(false))
+
+- name: Use mock VyOS configuration in test mode
+  include_tasks: test_mocks/mock_vyos_config.yaml
+  when:
+    - vyos_configure_router | default(true)
+    - vyos_test_mode | default(false)
 
 - name: Apply security hardening
   include_tasks: security_hardening.yaml
