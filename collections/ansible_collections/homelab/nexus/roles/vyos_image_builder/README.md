@@ -17,7 +17,7 @@ The `vyos_image_builder` role automates the process of building custom VyOS rout
 
 ```yaml
 # Build configuration
-vyos_version: "sagitta"                # VyOS version (1.4) or branch name (sagitta)
+vyos_version: "current"                # VyOS version (1.4) or branch name (sagitta)
 vyos_architecture: amd64               # Architecture (amd64 or arm64)
 vyos_build_by: 'homelab-ansible'       # Build attribution
 vyos_build_type: release               # Build type (release/development)
@@ -55,7 +55,7 @@ None
 - hosts: localhost
   become: yes
   vars:
-    vyos_version: "sagitta"           # Build VyOS 1.4 LTS
+    vyos_version: "current"           # Build VyOS 1.4 LTS
     vyos_build_by: "MyOrganization"
     vyos_images_dir: "/opt/vyos-images"
   roles:
@@ -85,7 +85,7 @@ From the project root directory:
 ansible-playbook build-vyos-image.yml
 
 # Build specific version
-ansible-playbook build-vyos-image.yml -e vyos_version=sagitta
+ansible-playbook build-vyos-image.yml -e vyos_version=current
 
 # Custom builder identification
 ansible-playbook build-vyos-image.yml -e vyos_build_by="John Doe"

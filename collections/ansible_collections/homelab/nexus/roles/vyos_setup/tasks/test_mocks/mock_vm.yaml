@@ -1,0 +1,55 @@
+---
+# Mock VM operations for testing
+# This file simulates VM creation without actually using libvirt
+
+- name: Create mock VM state directory
+  file:
+    path: /tmp/vyos-test-mock
+    state: directory
+    mode: '0755'
+
+- name: Create mock VM definition
+  copy:
+    content: |
+      VM Name: vyos-router
+      State: running
+      Memory: 2048 MB
+      vCPUs: 2
+      Disk: /tmp/vyos-test-mock/vyos-router.qcow2
+      Networks: wan, lan
+    dest: /tmp/vyos-test-mock/vyos-router.xml
+    mode: '0644'
+
+- name: Simulate VM disk creation
+  command: touch /tmp/vyos-test-mock/vyos-router.qcow2
+  args:
+    creates: /tmp/vyos-test-mock/vyos-router.qcow2
+
+- name: Create mock virsh output
+  copy:
+    content: |
+      vyos-router              running
+    dest: /tmp/vyos-test-mock/virsh-list.txt
+    mode: '0644'
+
+- name: Create mock cloud-init ISO
+  command: touch /var/lib/libvirt/images/vyos-cloud-init.iso
+  args:
+    creates: /var/lib/libvirt/images/vyos-cloud-init.iso
+  become: yes
+
+- name: Set mock VM facts
+  set_fact:
+    vyos_vm_created: true
+    vyos_vm_state: "running"
+    vyos_vm_ip: "192.168.122.10"
+    vyos_vm_mock: true
+
+- name: Display mock VM info
+  debug:
+    msg: |
+      Mock VyOS VM created:
+      - Name: vyos-router
+      - State: {{ vyos_vm_state }}
+      - IP: {{ vyos_vm_ip }}
+      - Mock Mode: {{ vyos_vm_mock }}

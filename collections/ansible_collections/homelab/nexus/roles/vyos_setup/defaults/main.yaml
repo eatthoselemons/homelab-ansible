@@ -1,4 +1,10 @@
 ---
+# Infisical Configuration
+infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
+infisical_url: "https://app.infisical.com"
+
 # VyOS VM Configuration
 vyos_vm:
   name: vyos-router
@@ -19,9 +25,11 @@ vyos_web_port: 443
 
 # Security Configuration
 vyos_admin_user: admin
-vyos_admin_password: "{{ vault_vyos_admin_password | default('ChangeMe123!') }}"
-vyos_admin_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
-vyos_ansible_ssh_key: "{{ vyos_admin_ssh_key }}"
+# These should be overridden by prepare.yml in test mode or set from Infisical in production
+# Providing defaults to avoid undefined variable errors
+vyos_admin_password: "TestPassword123!"
+vyos_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC test@molecule"
+vyos_ansible_ssh_private_key: "TEST_PRIVATE_KEY"
 vyos_security_hardening: true
 
 # Cloud-Init Configuration
@@ -42,107 +50,162 @@ vyos_trunk_interface: "eth1"
 vyos_wan_interface: "eth0"
 vyos_wan_dhcp: true
 
-# VLAN Network Definitions
+# Domain Configuration
+vyos_domain: "awynn.info"
+vyos_vlan_domains:
+  dmz: "public.{{ vyos_domain }}"
+  secure: "private.{{ vyos_domain }}"
+  management: "management.{{ vyos_domain }}"
+  logging: "logs.{{ vyos_domain }}"
+
+# Updated VLAN Network Definitions with /16 subnets
 vyos_vlan_networks:
   - name: "dmz"
     vlan_id: 10
     description: "DMZ Network - External facing services"
-    subnet: "10.10.0.0/24"
+    subnet: "10.10.0.0/16"  # Changed from /24
     gateway: "10.10.0.1"
+    domain: "{{ vyos_vlan_domains.dmz }}"
     bridge_name: "br-dmz"
     dhcp_enabled: true
     dhcp_range: "10.10.0.100-10.10.0.199"
+    dns_servers:
+      - "10.10.0.1"
+      - "1.1.1.1"
     firewall_rules:
-      - "deny from any to 10.20.0.0/24"
-      - "deny from any to 10.30.0.0/24"
-      - "deny from any to 10.40.0.0/24"
-      - "deny from any to 10.50.0.0/24"
-      - "allow from any to internet"
+      - rule: 10
+        action: "accept"
+        source: "10.10.0.0/16"
+        destination: "0.0.0.0/0"
+        description: "Allow DMZ to Internet"
+      - rule: 20
+        action: "drop"
+        source: "10.10.0.0/16"
+        destination: "10.0.0.0/8"
+        description: "Block DMZ to all internal networks"
 
   - name: "untrusted-wifi"
     vlan_id: 20
     description: "Untrusted WiFi - Guest devices"
-    subnet: "10.20.0.0/24"
+    subnet: "10.20.0.0/16"  # Changed from /24
     gateway: "10.20.0.1"
     bridge_name: "br-untrusted"
     dhcp_enabled: true
     dhcp_range: "10.20.0.100-10.20.0.199"
+    dns_servers:
+      - "10.20.0.1"
+      - "1.1.1.1"
     firewall_rules:
-      - "deny from any to 10.10.0.0/24"
-      - "deny from any to 10.30.0.0/24"
-      - "deny from any to 10.40.0.0/24"
-      - "deny from any to 10.50.0.0/24"
-      - "allow from any to internet"
+      - rule: 10
+        action: "accept"
+        source: "10.20.0.0/16"
+        destination: "0.0.0.0/0"
+        description: "Allow guest WiFi to Internet only"
+      - rule: 20
+        action: "drop"
+        source: "10.20.0.0/16"
+        destination: "10.0.0.0/8"
+        description: "Block guest WiFi to all internal networks"
 
   - name: "trusted-wifi"
     vlan_id: 30
     description: "Trusted WiFi - Personal devices"
-    subnet: "10.30.0.0/24"
+    subnet: "10.30.0.0/16"  # Changed from /24
     gateway: "10.30.0.1"
     bridge_name: "br-trusted"
     dhcp_enabled: true
     dhcp_range: "10.30.0.100-10.30.0.199"
+    dns_servers:
+      - "10.30.0.1"
+      - "1.1.1.1"
     firewall_rules:
-      - "allow from any to 10.50.0.0/24"
-      - "deny from any to 10.10.0.0/24"
-      - "deny from any to 10.20.0.0/24"
-      - "deny from any to 10.40.0.0/24"
-      - "allow from any to internet"
+      - rule: 10
+        action: "accept"
+        source: "10.30.0.0/16"
+        destination: "0.0.0.0/0"
+        description: "Allow trusted WiFi to Internet"
+      - rule: 20
+        action: "accept"
+        source: "10.30.0.0/16"
+        destination: "10.50.0.0/16"
+        description: "Allow trusted WiFi to secure network"
+      - rule: 30
+        action: "drop"
+        source: "10.30.0.0/16"
+        destination: "10.0.0.0/8"
+        description: "Block trusted WiFi to other internal networks"
 
   - name: "iot"
     vlan_id: 40
     description: "IoT Network - Isolated IoT devices"
-    subnet: "10.40.0.0/24"
+    subnet: "10.40.0.0/16"  # Changed from /24
     gateway: "10.40.0.1"
     bridge_name: "br-iot"
     dhcp_enabled: true
     dhcp_range: "10.40.0.100-10.40.0.199"
+    dns_servers:
+      - "10.40.0.1"
+      - "1.1.1.1"
     firewall_rules:
-      - "deny from any to 10.10.0.0/24"
-      - "deny from any to 10.20.0.0/24"
-      - "deny from any to 10.30.0.0/24"
-      - "deny from any to 10.50.0.0/24"
-      - "allow from any to internet"
+      - rule: 10
+        action: "accept"
+        source: "10.40.0.0/16"
+        destination: "0.0.0.0/0"
+        description: "Allow IoT to Internet"
+      - rule: 20
+        action: "drop"
+        source: "10.40.0.0/16"
+        destination: "10.0.0.0/8"
+        description: "Block IoT to all internal networks"
 
   - name: "secure"
     vlan_id: 50
     description: "Secure Network - Main trusted network"
-    subnet: "10.50.0.0/24"
+    subnet: "10.50.0.0/16"  # Changed from /24
     gateway: "10.50.0.1"
+    domain: "{{ vyos_vlan_domains.secure }}"
     bridge_name: "br-secure"
     dhcp_enabled: true
     dhcp_range: "10.50.0.100-10.50.0.199"
+    dns_servers:
+      - "10.50.0.1"
+      - "1.1.1.1"
     firewall_rules:
-      - "allow from any to 10.30.0.0/24"
-      - "allow from any to 10.60.0.0/24 via jumphost"
-      - "deny from any to 10.10.0.0/24"
-      - "deny from any to 10.20.0.0/24"
-      - "deny from any to 10.40.0.0/24"
-      - "allow from any to internet"
+      - rule: 10
+        action: "accept"
+        source: "10.50.0.0/16"
+        destination: "0.0.0.0/0"
+        description: "Allow Secure to Internet"
+      - rule: 20
+        action: "accept"
+        source: "10.50.0.0/16"
+        destination: "10.60.0.0/16"
+        description: "Allow Secure to Management via jumphost"
+        condition: "via-jumphost"
 
   - name: "management"
     vlan_id: 60
     description: "Management Network - Server administration"
-    subnet: "10.60.0.0/24"
+    subnet: "10.60.0.0/16"  # Changed from /24
     gateway: "10.60.0.1"
+    domain: "{{ vyos_vlan_domains.management }}"
     bridge_name: "br-mgmt"
     dhcp_enabled: true
     dhcp_range: "10.60.0.100-10.60.0.199"
-    firewall_rules:
-      - "allow from 10.50.0.0/24 via jumphost"
-      - "deny from any to any"
+    dns_servers:
+      - "10.60.0.1"
+      - "1.1.1.1"
 
   - name: "logging"
     vlan_id: 70
     description: "Logging Network - System monitoring"
-    subnet: "10.70.0.0/24"
+    subnet: "10.70.0.0/16"  # Changed from /24
     gateway: "10.70.0.1"
+    domain: "{{ vyos_vlan_domains.logging }}"
     bridge_name: "br-logging"
-    dhcp_enabled: true
-    dhcp_range: "10.70.0.100-10.70.0.199"
-    firewall_rules:
-      - "allow from any to syslog"
-      - "deny from any to any"
+    dhcp_enabled: false
+    dns_servers:
+      - "10.70.0.1"
 
 # DNS Configuration
 vyos_dns_servers:

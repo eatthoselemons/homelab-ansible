@@ -1,0 +1,6 @@
+---
+# Test-specific variables for VyOS image builder mock test
+vyos_test_mode: true
+
+# Force mock mode for image building
+vyos_build_mock: true

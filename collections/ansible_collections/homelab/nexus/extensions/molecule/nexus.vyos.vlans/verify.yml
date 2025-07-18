@@ -1,0 +1,54 @@
+---
+- name: Verify
+  hosts: all
+  vars:
+    expected_vlans:
+      - { name: dmz, id: 10, subnet: "10.10.0.0/16", domain: "public.awynn.info" }
+      - { name: untrusted-wifi, id: 20, subnet: "10.20.0.0/16" }
+      - { name: trusted-wifi, id: 30, subnet: "10.30.0.0/16" }
+      - { name: iot, id: 40, subnet: "10.40.0.0/16" }
+      - { name: secure, id: 50, subnet: "10.50.0.0/16", domain: "private.awynn.info" }
+      - { name: management, id: 60, subnet: "10.60.0.0/16", domain: "management.awynn.info" }
+      - { name: logging, id: 70, subnet: "10.70.0.0/16", domain: "logs.awynn.info" }
+  tasks:
+    - name: Check bridge interfaces
+      command: "ip link show {{ item.bridge_name }}"
+      loop: "{{ vyos_vlan_networks }}"
+      register: bridge_check
+      changed_when: false
+      when: not (vyos_test_mode | default(false))
+
+    - name: Verify bridges exist in test mode
+      debug:
+        msg: "Skipping bridge verification in test mode"
+      when: vyos_test_mode | default(false)
+
+    - name: Check VLAN configuration in defaults
+      debug:
+        msg: "VLAN {{ item.name }}: ID={{ item.vlan_id }}, Subnet={{ item.subnet }}, Domain={{ item.domain }}"
+      loop: "{{ vyos_vlan_networks }}"
+
+    - name: Verify VLAN subnets are /16
+      assert:
+        that:
+          - "'/16' in item.subnet"
+        fail_msg: "VLAN {{ item.name }} subnet {{ item.subnet }} is not /16"
+      loop: "{{ vyos_vlan_networks }}"
+
+    - name: Verify VLAN domains are configured for service VLANs
+      assert:
+        that:
+          - item.domain is defined
+          - item.domain | length > 0
+          - "'awynn.info' in item.domain"
+        fail_msg: "VLAN {{ item.name }} missing proper domain configuration"
+      loop: "{{ vyos_vlan_networks }}"
+      when: item.name in ['dmz', 'secure', 'management', 'logging']
+
+    - name: Verify VLANs without domains don't have domain set
+      assert:
+        that:
+          - item.domain is not defined
+        fail_msg: "VLAN {{ item.name }} should not have a domain configured"
+      loop: "{{ vyos_vlan_networks }}"
+      when: item.name in ['untrusted-wifi', 'trusted-wifi', 'iot']

@@ -5,7 +5,7 @@
   gather_facts: yes
   vars:
     # Override these variables as needed
-    vyos_version: "sagitta"
+    vyos_version: "current"
     vyos_build_type: "release"
     # Default to project-relative path, can be overridden
     # Note: When called from root wrapper, this will be overridden

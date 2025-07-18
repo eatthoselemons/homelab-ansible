@@ -1,0 +1,86 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+    - name: Install libvirt and dependencies
+      apt:
+        name:
+          - libvirt-daemon-system
+          - libvirt-clients
+          - qemu-system-x86
+          - qemu-utils
+          - virtinst
+          - bridge-utils
+          - cloud-image-utils
+          - python3-passlib
+          - python3-lxml
+          - python3-libvirt
+          - openssh-client
+        state: present
+        update_cache: yes
+      become: yes
+
+    - name: Start libvirtd service
+      systemd:
+        name: libvirtd
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: Ensure default network is active
+      command: virsh net-start default
+      register: net_start
+      failed_when: false
+      changed_when: "'started' in net_start.stdout"
+      become: yes
+
+    - name: Ensure default network is autostarted
+      command: virsh net-autostart default
+      register: net_autostart
+      failed_when: false
+      changed_when: "'marked as autostarted' in net_autostart.stdout"
+      become: yes
+
+    - name: Check KVM availability
+      stat:
+        path: /dev/kvm
+      register: kvm_device
+
+    - name: Verify KVM is available
+      assert:
+        that:
+          - kvm_device.stat.exists
+          - kvm_device.stat.ischr
+        fail_msg: "KVM device not available. Ensure Docker container has access to /dev/kvm"
+
+    - name: Verify VyOS image is mounted
+      stat:
+        path: /opt/vyos/vyos-current.iso
+      register: vyos_image
+      
+    - name: Fail if VyOS image not mounted
+      fail:
+        msg: "VyOS image not mounted at /opt/vyos/vyos-current.iso"
+      when: not vyos_image.stat.exists
+
+    - name: Create test SSH key pair
+      command: ssh-keygen -t rsa -b 2048 -f /tmp/test_ssh_key -N ""
+      args:
+        creates: /tmp/test_ssh_key
+
+    - name: Read test SSH public key
+      slurp:
+        src: /tmp/test_ssh_key.pub
+      register: test_ssh_pub_key
+
+    - name: Read test SSH private key
+      slurp:
+        src: /tmp/test_ssh_key
+      register: test_ssh_priv_key
+
+    - name: Set test values for VyOS
+      set_fact:
+        # Plain text password for testing
+        vyos_admin_password: "TestPassword123!"
+        vyos_ansible_ssh_key: "{{ test_ssh_pub_key.content | b64decode | trim }}"
+        vyos_ansible_ssh_private_key: "{{ test_ssh_priv_key.content | b64decode }}"

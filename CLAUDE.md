@@ -11,6 +11,8 @@
 ### 🧪 Testing & Reliability
 - **Always create molecule unit tests for new features** (functions, classes, routes, etc).
 - **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
+- **Run FULL tests, not just syntax checks** - When verifying that tests work, always run the complete test suite using `./test.sh test <test-name>`. Time is not an issue; the preference is that tests fully work.
+- **Test verification priority**: Full functionality over speed. Always run complete test cycles to ensure proper validation.
 
 ### ✅ Task Completion
 - **Mark completed tasks in `TASK.md`** immediately after finishing them.
@@ -43,13 +45,18 @@
 - **Handlers**: Service restarts and notifications in `handlers/main.yml`
 - **Testing**: Molecule scenarios for each role with proper isolation
 - **Avoid bash scripts**: use structured Ansible configuration blocks
+- **Newlines**: always have newlines at the end of files
 
 ### 🧪 Testing with Molecule
-- **Navigate to collection test directory**: `cd collections/ansible_collections/homelab/nexus/extensions/`
-- **List All Tests**: `molecule list`
-- **Run test**: `molecule test -s <test-name>`
-- **Syntax check only**: `molecule syntax -s <test-name>`
-- **Check Setup**: `molecule converge -s <test-name>`
+- **Use the test.sh script**: `./test.sh` handles environment setup, virtual environment, and directory navigation automatically
+- **List All Tests**: `./test.sh list` or just `./test.sh`
+- **Run full test**: `./test.sh test <test-name>` (e.g., `./test.sh test nexus.vyos.setup`)
+- **Syntax check only**: `./test.sh syntax <test-name>`
+- **Converge (setup test environment)**: `./test.sh converge <test-name>`
+- **Verify tests**: `./test.sh verify <test-name>`
+- **Destroy test environment**: `./test.sh destroy <test-name>`
+- **Environment variables**: Copy `.env.example` to `.env` and fill in any required secrets for testing
+- **Manual execution**: If needed, use full paths: `/home/user/ansible-venv/bin/molecule` from `collections/ansible_collections/homelab/nexus/extensions/`
 - **Similar To Prod**: all tests should be as similar as possible to deploying on prod
 
 ### 🔒 Security & Secrets

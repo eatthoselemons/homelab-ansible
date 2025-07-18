@@ -3,3 +3,4 @@ ansible-venv
 ansible/roles/*
 images/
 *.iso
+.env

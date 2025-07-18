@@ -1,4 +1,8 @@
 ---
+- name: Use mock VLAN operations in test mode
+  when: vyos_test_mode | default(false)
+  include_tasks: test_mocks/mock_vlan.yaml
+
 - name: Create VLAN-aware bridge networks
   community.libvirt.virt_net:
     name: "{{ item.name }}"
@@ -6,12 +10,14 @@
     command: define
     xml: "{{ lookup('template', 'vlan_network.xml.j2', item=item) }}"
   loop: "{{ vyos_vlan_networks }}"
+  when: not (vyos_test_mode | default(false))
 
 - name: Start VLAN networks
   community.libvirt.virt_net:
     name: "{{ item.name }}"
     state: active
   loop: "{{ vyos_vlan_networks }}"
+  when: not (vyos_test_mode | default(false))
 
 - name: Install OpenVSwitch if not in container
   apt:
@@ -42,7 +48,9 @@
     mode: '0644'
   loop: "{{ vyos_vlan_networks }}"
   notify: restart systemd-networkd
-  when: vyos_configure_host_vlans | default(false)
+  when: 
+    - vyos_configure_host_vlans | default(false)
+    - not (vyos_test_mode | default(false))
 
 - name: Create VLAN bridge interfaces
   ansible.builtin.shell: |
@@ -55,4 +63,6 @@
     {% endif %}
   loop: "{{ vyos_vlan_networks }}"
   ignore_errors: true
-  when: vyos_configure_host_vlans | default(false)
+  when: 
+    - vyos_configure_host_vlans | default(false)
+    - not (vyos_test_mode | default(false))

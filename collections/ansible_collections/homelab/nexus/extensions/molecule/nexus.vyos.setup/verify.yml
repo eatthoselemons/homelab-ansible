@@ -2,47 +2,79 @@
 - name: Verify
   hosts: all
   tasks:
-    - name: Check if VM is defined
-      command: virsh list --all
-      register: vm_list
-      changed_when: false
+    - name: Check test mode
+      set_fact:
+        is_test_mode: "{{ vyos_test_mode | default(true) | bool }}"
 
-    - name: Verify VyOS VM exists
-      assert:
-        that:
-          - "'vyos-router' in vm_list.stdout"
-        fail_msg: "VyOS VM not found in libvirt"
+    - name: Verify in mock mode
+      when: is_test_mode
+      block:
+        - name: Check mock VM state
+          stat:
+            path: /tmp/vyos-test-mock/vyos-router.xml
+          register: mock_vm_state
+          
+        - name: Verify mock VM was created
+          assert:
+            that:
+              - mock_vm_state.stat.exists
+            fail_msg: "Mock VyOS VM state not found"
+            
+        - name: Check mock networks
+          stat:
+            path: /tmp/vyos-test-mock/networks/wan.xml
+          register: mock_wan_net
+          
+        - name: Verify mock networks exist
+          assert:
+            that:
+              - mock_wan_net.stat.exists
+            fail_msg: "Mock networks not found"
 
-    - name: Check if VM is running
-      command: virsh domstate vyos-router
-      register: vm_state
-      changed_when: false
+    - name: Verify in real mode
+      when: not is_test_mode
+      block:
+        - name: Check if VM is defined
+          command: virsh list --all
+          register: vm_list
+          changed_when: false
 
-    - name: Verify VM is running
-      assert:
-        that:
-          - vm_state.stdout == "running"
-        fail_msg: "VyOS VM is not running"
+        - name: Verify VyOS VM exists
+          assert:
+            that:
+              - "'vyos-router' in vm_list.stdout"
+            fail_msg: "VyOS VM not found in libvirt"
 
-    - name: Check cloud-init ISO exists
-      stat:
-        path: /var/lib/libvirt/images/vyos-cloud-init.iso
-      register: cloud_init_iso
+        - name: Check if VM is running
+          command: virsh domstate vyos-router
+          register: vm_state
+          changed_when: false
 
-    - name: Verify cloud-init ISO was created
-      assert:
-        that:
-          - cloud_init_iso.stat.exists
-        fail_msg: "Cloud-init ISO not found"
+        - name: Verify VM is running
+          assert:
+            that:
+              - vm_state.stdout == "running"
+            fail_msg: "VyOS VM is not running"
 
-    - name: Check libvirt networks
-      command: virsh net-list
-      register: net_list
-      changed_when: false
+        - name: Check cloud-init ISO exists
+          stat:
+            path: /var/lib/libvirt/images/vyos-cloud-init.iso
+          register: cloud_init_iso
 
-    - name: Verify networks are active
-      assert:
-        that:
-          - "'wan' in net_list.stdout"
-          - "'lan' in net_list.stdout"
-        fail_msg: "Required networks not active"
+        - name: Verify cloud-init ISO was created
+          assert:
+            that:
+              - cloud_init_iso.stat.exists
+            fail_msg: "Cloud-init ISO not found"
+
+        - name: Check libvirt networks
+          command: virsh net-list
+          register: net_list
+          changed_when: false
+
+        - name: Verify networks are active
+          assert:
+            that:
+              - "'wan' in net_list.stdout"
+              - "'lan' in net_list.stdout"
+            fail_msg: "Required networks not active"

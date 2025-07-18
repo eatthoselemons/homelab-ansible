@@ -1,34 +1,48 @@
 #cloud-config
-vyos_config_commands:
-  # System configuration
-  - set system host-name '{{ vyos_vm.name | default("vyos-router") }}'
-  - set system time-zone 'UTC'
-  
-  # Temporary user for initial access
-  - set system login user vyos authentication plaintext-password 'temp-{{ lookup('password', '/dev/null length=16') }}'
-  - set system login user vyos authentication public-keys ansible type 'ssh-ed25519'
-  - set system login user vyos authentication public-keys ansible key '{{ vyos_ansible_ssh_key }}'
-  
-  # Basic interface configuration
-  - set interfaces ethernet eth0 description 'WAN'
-  - set interfaces ethernet eth0 address 'dhcp'
-  - set interfaces ethernet eth1 description 'LAN'
-  - set interfaces ethernet eth1 address '{{ vyos_vm_ip }}/24'
-  
-  # Enable SSH
-  - set service ssh port '{{ vyos_ssh_port }}'
-  - set service ssh disable-password-authentication
-  
-  # DNS servers
-  - set system name-server '{{ vyos_dns_servers[0] }}'
-  - set system name-server '{{ vyos_dns_servers[1] }}'
-  
-  # Basic temporary NAT for initial setup
-  - set nat source rule 100 description 'NAT for LAN'
-  - set nat source rule 100 outbound-interface 'eth0'
-  - set nat source rule 100 source address '192.168.122.0/24'
-  - set nat source rule 100 translation address 'masquerade'
-  
-  # Save configuration
-  - commit
-  - save
+hostname: {{ vyos_vm.name }}
+manage_etc_hosts: true
+
+users:
+  - name: {{ vyos_admin_user }}
+    sudo: ALL=(ALL) ALL
+    groups: sudo
+    shell: /bin/vbash
+    lock_passwd: false
+    plain_text_passwd: {{ vyos_admin_password }}
+    ssh_authorized_keys:
+      - {{ vyos_ansible_ssh_key }}
+
+write_files:
+  - path: /config/scripts/vyos-postconfig-bootup.script
+    owner: root:vyattacfg
+    permissions: '0755'
+    content: |
+      #!/bin/vbash
+      source /opt/vyatta/etc/functions/script-template
+      
+      # Configure VLANs with domains
+{% for vlan in vyos_vlan_networks %}
+      set interfaces ethernet eth1 vif {{ vlan.vlan_id }} address '{{ vlan.gateway }}/{{ vlan.subnet.split('/')[1] }}'
+      set interfaces ethernet eth1 vif {{ vlan.vlan_id }} description '{{ vlan.description }}'
+      
+      # Configure DHCP for VLAN {{ vlan.name }}
+{% if vlan.dhcp_enabled %}
+      set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }}
+      set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} default-router '{{ vlan.gateway }}'
+      set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} name-server '{{ vlan.dns_servers | join(' ') }}'
+{% if vlan.domain is defined %}
+      set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} domain-name '{{ vlan.domain }}'
+{% endif %}
+      set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} range 0 start '{{ vlan.dhcp_range.split('-')[0] }}'
+      set service dhcp-server shared-network-name {{ vlan.name }} subnet {{ vlan.subnet }} range 0 stop '{{ vlan.dhcp_range.split('-')[1] }}'
+{% endif %}
+      
+{% if vlan.domain is defined %}
+      # Configure DNS for domain {{ vlan.domain }}
+      set system static-host-mapping host-name {{ vlan.name }}.{{ vlan.domain }} inet {{ vlan.gateway }}
+{% endif %}
+      
+{% endfor %}
+      
+      commit
+      save
