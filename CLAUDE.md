@@ -2,19 +2,16 @@
 1. **Always run full tests** - Use `./test.sh test <name>`, never just syntax checks
 2. **Never hardcode secrets** - Prefer Infisical for secrets
 3. **Follow variable checklist** - Check variables comply with `docs/llms/best-practices/variable-checklist.md`
-4. **Update TASK.md as you work** - Track progress with ✅, 🔄, ⏳ indicators
+4. **Track tasks properly** - Create task files in `docs/humans/tasks/` to track work progress
 5. **Test changes with molecule** - Verify all modifications work correctly
 
 ### 🔄 Project Awareness & Context
 - **Always read `docs/llm/design/architecture.md`** at the start of a new conversation to understand the project's architecture, goals, style, and constraints.
-- **Task Management with `TASK.md`**:
-  - Check if `TASK.md` exists before starting work
-  - If working on a multi-step task, create/update `TASK.md` with:
-    - Task name and date started
-    - List of subtasks to complete
-    - Progress indicators (✅ completed, 🔄 in progress, ⏳ pending)
-  - Update task status as you work
-  - Add a "Discovered During Work" section for new issues found
+- **Task Management**:
+  - Create a task file in `docs/humans/tasks/` (e.g., `feature-name.md`)
+  - Use the template at `docs/humans/tasks/TASK-TEMPLATE.md`
+  - Update progress as you work (⏳ pending, 🔄 in progress, ✅ completed)
+  - Keep task file updated with clear summary of changes for PR description
 - **Use consistent naming conventions, file structure, and architecture patterns** as described in `PLANNING.md`.
 
 ### 🧱 Code Structure & Modularity
@@ -34,9 +31,9 @@
 - **Test verification priority**: Full functionality over speed. Always run complete test cycles to ensure proper validation.
 
 ### ✅ Task Completion
-- **Update `TASK.md` immediately** when completing tasks (mark with ✅)
+- **Update task files immediately** when completing subtasks (mark with ✅)
 - **Document discovered issues** in the "Discovered During Work" section
-- **Include what was changed** in a brief summary for each completed task
+- **Include completion summary** describing what was changed and the outcome
 
 ### 📚 Documentation & Explainability
 - **Update `README.md`** when new features are added, dependencies change, or setup steps are modified.
