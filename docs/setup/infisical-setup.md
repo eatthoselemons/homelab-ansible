@@ -9,7 +9,7 @@ Infisical is used to securely manage secrets like passwords, SSH keys, and API t
 ## Prerequisites
 
 - An Infisical account (free tier works fine)
-- The `infisical.vault` Ansible collection (installed via requirements.yml)
+- The `infisical.vault` Ansible collection (installed via requirements.yaml)
 
 ## Setup Steps
 
@@ -140,7 +140,7 @@ Your Client ID or Client Secret is incorrect. Regenerate them in Infisical if ne
 
 Install the required Ansible collections:
 ```bash
-ansible-galaxy collection install -r collections/ansible_collections/homelab/nexus/requirements.yml
+ansible-galaxy collection install -r collections/ansible_collections/homelab/nexus/requirements.yaml
 ```
 
 ## Security Best Practices

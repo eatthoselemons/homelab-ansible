@@ -194,7 +194,7 @@ if [ "$SKIP_BUILD" = false ]; then
         else
             rm -f images/vyos/vyos-current.iso images/vyos/vyos-latest.iso
             print_warning "Building VyOS image (this takes 20-30 minutes)..."
-            ansible-playbook build-vyos-image.yml \
+            ansible-playbook build-vyos-image.yaml \
                 -e ansible_become_password="${ANSIBLE_BECOME_PASSWORD}" \
                 -e vyos_version=current
             print_status "✓ VyOS image built successfully"
@@ -205,7 +205,7 @@ if [ "$SKIP_BUILD" = false ]; then
             rm -f images/vyos/vyos-current.iso images/vyos/vyos-latest.iso
         fi
         print_warning "Building VyOS image (this takes 20-30 minutes)..."
-        ansible-playbook build-vyos-image.yml \
+        ansible-playbook build-vyos-image.yaml \
             -e ansible_become_password="${ANSIBLE_BECOME_PASSWORD}" \
             -e vyos_version=current
         print_status "✓ VyOS image built successfully"

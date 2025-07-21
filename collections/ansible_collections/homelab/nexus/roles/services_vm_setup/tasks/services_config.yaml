@@ -1,8 +1,8 @@
 ---
 - name: Create docker-compose file for services
   ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: /opt/services/docker-compose.yml
+    src: docker-compose.yaml.j2
+    dest: /opt/services/docker-compose.yaml
     mode: '0644'
   notify: restart services
 

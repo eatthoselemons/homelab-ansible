@@ -21,7 +21,7 @@ fi
 cd "$PROJECT_ROOT"
 
 echo "Running from directory: $(pwd)"
-echo "Looking for playbook: $PROJECT_ROOT/build-vyos-image.yml"
+echo "Looking for playbook: $PROJECT_ROOT/build-vyos-image.yaml"
 
 # Use a test directory for the image
 TEST_IMAGE_DIR="/tmp/vyos-test-build-$$"
@@ -30,7 +30,7 @@ mkdir -p "$TEST_IMAGE_DIR"
 echo "Building VyOS image to test directory: $TEST_IMAGE_DIR"
 
 # Run the build playbook with test directory
-ansible-playbook build-vyos-image.yml \
+ansible-playbook build-vyos-image.yaml \
     -e ansible_become_password="${ANSIBLE_BECOME_PASSWORD}" \
     -e vyos_images_dir="$TEST_IMAGE_DIR" \
     -e vyos_version=current \
@@ -77,7 +77,7 @@ echo "  - Symlink: vyos-latest.iso -> vyos-current.iso"
 # Test idempotency by running again
 echo ""
 echo "Testing idempotency (should skip build)..."
-ansible-playbook build-vyos-image.yml \
+ansible-playbook build-vyos-image.yaml \
     -e ansible_become_password="${ANSIBLE_BECOME_PASSWORD}" \
     -e vyos_images_dir="$TEST_IMAGE_DIR" \
     -e vyos_version=current \

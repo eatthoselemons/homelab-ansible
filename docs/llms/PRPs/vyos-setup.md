@@ -112,14 +112,14 @@ Test scenarios:
 **Location**: `collections/ansible_collections/homelab/nexus/roles/vyos_image_builder/`
 
 ```yaml
-# defaults/main.yml
+# defaults/main.yaml
 ---
 vyos_build_dir: /tmp/vyos-build
 vyos_images_dir: "{{ playbook_dir }}/../images/vyos"
 vyos_version: current
 vyos_architecture: amd64
 
-# tasks/main.yml
+# tasks/main.yaml
 ---
 - name: Check if VyOS image already exists
   stat:
@@ -199,7 +199,7 @@ vyos_architecture: amd64
 **Location**: `collections/ansible_collections/homelab/nexus/roles/vyos_setup/`
 
 ```yaml
-# tasks/main.yml - Updated structure
+# tasks/main.yaml - Updated structure
 ---
 - name: Build VyOS image if needed
   include_role:
@@ -436,12 +436,12 @@ ethernets:
 **Location**: `collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.setup/`
 
 ```yaml
-# molecule.yml
+# molecule.yaml
 ---
 dependency:
   name: galaxy
   options:
-    requirements-file: requirements.yml
+    requirements-file: requirements.yaml
 
 driver:
   name: docker
@@ -476,7 +476,7 @@ provisioner:
 verifier:
   name: ansible
 
-# converge.yml
+# converge.yaml
 ---
 - name: Converge
   hosts: all
@@ -490,7 +490,7 @@ verifier:
       include_role:
         name: homelab.nexus.vyos_setup
 
-# verify.yml
+# verify.yaml
 ---
 - name: Verify
   hosts: all
@@ -520,7 +520,7 @@ verifier:
 
 #### Test 2: nexus.vyos.security_hardening
 ```yaml
-# verify.yml
+# verify.yaml
 ---
 - name: Verify security hardening
   hosts: all
@@ -564,14 +564,14 @@ verifier:
 collections/ansible_collections/homelab/nexus/
 ├── roles/
 │   ├── vyos_image_builder/
-│   │   ├── defaults/main.yml
-│   │   ├── tasks/main.yml
-│   │   ├── handlers/main.yml
+│   │   ├── defaults/main.yaml
+│   │   ├── tasks/main.yaml
+│   │   ├── handlers/main.yaml
 │   │   └── README.md
 │   └── vyos_setup/
-│       ├── defaults/main.yml
+│       ├── defaults/main.yaml
 │       ├── tasks/
-│       │   ├── main.yml
+│       │   ├── main.yaml
 │       │   ├── configure_networks.yaml
 │       │   ├── vyos_config.yaml
 │       │   ├── security_hardening.yaml
@@ -581,13 +581,13 @@ collections/ansible_collections/homelab/nexus/
 │       │   ├── cloud-init/
 │       │   │   ├── user-data.j2
 │       │   │   └── network-config.j2
-│       │   ├── vyos_vm_template.yml
+│       │   ├── vyos_vm_template.yaml
 │       │   ├── vyos_firewall_config.j2
 │       │   ├── vyos_fail2ban.j2
 │       │   └── *.xml.j2 (network configs)
-│       ├── handlers/main.yml
+│       ├── handlers/main.yaml
 │       └── meta/
-│           └── requirements.yml
+│           └── requirements.yaml
 ├── extensions/molecule/
 │   ├── nexus.vyos.setup/
 │   ├── nexus.vyos.security_hardening/

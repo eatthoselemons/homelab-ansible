@@ -1,6 +1,6 @@
 ---
-# Ubuntu version: Edit ../.env.yml to change UBUNTU_VERSION and MOLECULE_DOCKER_IMAGE
-# Shared configuration inherited from /.config/molecule/config.yml
+# Ubuntu version: Edit ../.env.yaml to change UBUNTU_VERSION and MOLECULE_DOCKER_IMAGE
+# Shared configuration inherited from /.config/molecule/config.yaml
 
 platforms:
   - name: services-test

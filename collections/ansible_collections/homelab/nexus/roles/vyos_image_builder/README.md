@@ -82,19 +82,19 @@ From the project root directory:
 
 ```bash
 # Build VyOS 1.4 (default)
-ansible-playbook build-vyos-image.yml
+ansible-playbook build-vyos-image.yaml
 
 # Build specific version
-ansible-playbook build-vyos-image.yml -e vyos_version=current
+ansible-playbook build-vyos-image.yaml -e vyos_version=current
 
 # Custom builder identification
-ansible-playbook build-vyos-image.yml -e vyos_build_by="John Doe"
+ansible-playbook build-vyos-image.yaml -e vyos_build_by="John Doe"
 
 # Keep build directory for debugging
-ansible-playbook build-vyos-image.yml -e vyos_build_cleanup=false
+ansible-playbook build-vyos-image.yaml -e vyos_build_cleanup=false
 
 # Custom output directory
-ansible-playbook build-vyos-image.yml -e vyos_images_dir=/custom/path
+ansible-playbook build-vyos-image.yaml -e vyos_images_dir=/custom/path
 ```
 
 ### Testing

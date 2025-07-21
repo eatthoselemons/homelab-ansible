@@ -18,11 +18,12 @@
 - **Never create a file longer than 500 lines of code** - Refactor into modules or helper files
 - **Organize code into clearly separated modules** - Group by feature or responsibility
 - **Roles**: Single-purpose, reusable components in collection
-- **Variables**: Use `defaults/main.yml` for overridable defaults, `vars/main.yml` for constants
+- **Variables**: Use `defaults/main.yaml` for overridable defaults, `vars/main.yaml` for constants
 - **Templates**: Jinja2 templates in `templates/` directory
-- **Handlers**: Service restarts and notifications in `handlers/main.yml`
+- **Handlers**: Service restarts and notifications in `handlers/main.yaml`
 - **Avoid bash scripts**: Use structured Ansible configuration blocks
 - **Newlines**: Always have newlines at the end of files
+- **File extensions**: Always use `.yaml` extension, never `.yml`
 
 ### 🧪 Testing & Reliability
 - **Always create molecule unit tests for new features** (functions, classes, routes, etc).

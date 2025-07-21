@@ -13,7 +13,7 @@
 - **Example**: Internal role variables like `_vyos_temp_dir: /tmp/vyos`
 - **When to use**: Rarely - only for true constants
 
-### 3. **Test Variables** (`molecule/*/group_vars/all.yml`)
+### 3. **Test Variables** (`molecule/*/group_vars/all.yaml`)
 - **Purpose**: Override defaults specifically for testing
 - **Example**: `vyos_test_mode: true`
 - **When to use**: Test-specific values that differ from production
@@ -28,9 +28,9 @@
 ```
 defaults/main.yaml (Role Defaults)
     ↓
-group_vars/all.yml (Environment/Test Overrides)  
+group_vars/all.yaml (Environment/Test Overrides)  
     ↓
-host_vars/hostname.yml (Host-Specific Overrides)
+host_vars/hostname.yaml (Host-Specific Overrides)
     ↓
 Playbook vars (Runtime Overrides)
 ```
@@ -49,10 +49,10 @@ Playbook vars (Runtime Overrides)
 - Test-specific overrides (for Molecule tests)
 - Production-specific overrides (for actual deployments)
 
-### "What about molecule.yml host_vars?"
-While Molecule supports defining variables in `molecule.yml`, it's better to use `group_vars/all.yml` because:
+### "What about molecule.yaml host_vars?"
+While Molecule supports defining variables in `molecule.yaml`, it's better to use `group_vars/all.yaml` because:
 - It's the standard Ansible way
-- Keeps molecule.yml focused on infrastructure
+- Keeps molecule.yaml focused on infrastructure
 - Makes variables easier to find and maintain
 
 ## Example in Practice
@@ -61,10 +61,10 @@ While Molecule supports defining variables in `molecule.yml`, it's better to use
 # roles/vyos_setup/defaults/main.yaml
 vyos_vm_memory: 4096  # Sensible default for most users
 
-# molecule/nexus.vyos.setup/group_vars/all.yml
+# molecule/nexus.vyos.setup/group_vars/all.yaml
 vyos_vm_memory: 2048  # Smaller for testing
 
-# site/group_vars/routers.yml
+# site/group_vars/routers.yaml
 vyos_vm_memory: 8192  # Larger for production routers
 ```
 

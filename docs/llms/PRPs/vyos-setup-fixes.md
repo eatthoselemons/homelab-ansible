@@ -36,7 +36,7 @@ This PRP addresses critical issues in the VyOS setup automation, focusing on fix
 
 #### 1.1 Install Infisical Collection
 ```yaml
-# collections/ansible_collections/homelab/nexus/requirements.yml
+# collections/ansible_collections/homelab/nexus/requirements.yaml
 collections:
   - name: infisical.vault
     version: ">=1.1.0"
@@ -172,14 +172,14 @@ vyos_vlan_networks:
 
 ### Phase 3: Fix Tests to Use Real VyOS Images
 
-#### 3.1 Update molecule.yml to use real images
+#### 3.1 Update molecule.yaml to use real images
 ```yaml
-# extensions/molecule/nexus.vyos.setup/molecule.yml
+# extensions/molecule/nexus.vyos.setup/molecule.yaml
 ---
 dependency:
   name: galaxy
   options:
-    requirements-file: requirements.yml
+    requirements-file: requirements.yaml
 
 driver:
   name: docker
@@ -226,9 +226,9 @@ verifier:
   name: ansible
 ```
 
-#### 3.2 Update converge.yml to verify real image
+#### 3.2 Update converge.yaml to verify real image
 ```yaml
-# extensions/molecule/nexus.vyos.setup/converge.yml
+# extensions/molecule/nexus.vyos.setup/converge.yaml
 ---
 - name: Converge
   hosts: all
@@ -319,14 +319,14 @@ verifier:
 mkdir -p collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.vlans
 ```
 
-#### 5.2 Create molecule.yml for VLAN test
+#### 5.2 Create molecule.yaml for VLAN test
 ```yaml
-# extensions/molecule/nexus.vyos.vlans/molecule.yml
+# extensions/molecule/nexus.vyos.vlans/molecule.yaml
 ---
 dependency:
   name: galaxy
   options:
-    requirements-file: requirements.yml
+    requirements-file: requirements.yaml
 
 driver:
   name: docker
@@ -363,9 +363,9 @@ verifier:
   name: ansible
 ```
 
-#### 5.3 Create converge.yml for VLAN test
+#### 5.3 Create converge.yaml for VLAN test
 ```yaml
-# extensions/molecule/nexus.vyos.vlans/converge.yml
+# extensions/molecule/nexus.vyos.vlans/converge.yaml
 ---
 - name: Converge
   hosts: all
@@ -391,9 +391,9 @@ verifier:
         tasks_from: vlan_setup.yaml
 ```
 
-#### 5.4 Create verify.yml for VLAN test
+#### 5.4 Create verify.yaml for VLAN test
 ```yaml
-# extensions/molecule/nexus.vyos.vlans/verify.yml
+# extensions/molecule/nexus.vyos.vlans/verify.yaml
 ---
 - name: Verify
   hosts: all
@@ -495,9 +495,9 @@ write_files:
       save
 ```
 
-#### 6.2 Create requirements.yml
+#### 6.2 Create requirements.yaml
 ```yaml
-# extensions/molecule/nexus.vyos.vlans/requirements.yml
+# extensions/molecule/nexus.vyos.vlans/requirements.yaml
 ---
 collections:
   - name: community.libvirt
@@ -557,7 +557,7 @@ molecule converge -s nexus.vyos.setup
 
 ```
 collections/ansible_collections/homelab/nexus/
-├── requirements.yml (updated with infisical.vault)
+├── requirements.yaml (updated with infisical.vault)
 ├── roles/
 │   └── vyos_setup/
 │       ├── defaults/main.yaml (updated with Infisical, domains, /16 subnets)
@@ -572,20 +572,20 @@ collections/ansible_collections/homelab/nexus/
 └── extensions/
     └── molecule/
         ├── nexus.vyos.setup/
-        │   ├── molecule.yml (updated to use real images)
-        │   ├── converge.yml (updated)
-        │   ├── verify.yml (enhanced)
-        │   └── requirements.yml
+        │   ├── molecule.yaml (updated to use real images)
+        │   ├── converge.yaml (updated)
+        │   ├── verify.yaml (enhanced)
+        │   └── requirements.yaml
         └── nexus.vyos.vlans/ (new)
-            ├── molecule.yml
-            ├── converge.yml
-            ├── verify.yml
-            └── requirements.yml
+            ├── molecule.yaml
+            ├── converge.yaml
+            ├── verify.yaml
+            └── requirements.yaml
 ```
 
 ## Implementation Order
 
-1. **Install Infisical collection** - Update requirements.yml
+1. **Install Infisical collection** - Update requirements.yaml
 2. **Update defaults with Infisical lookups** - Integrate secrets management
 3. **Fix VLAN configurations** - Update to /16 subnets with domains
 4. **Fix idempotency issues** - Add handlers, conditional checks
