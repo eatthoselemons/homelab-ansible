@@ -1,7 +1,0 @@
----
-- name: Converge
-  hosts: all
-  tasks:
-    - name: Include vyos_image_builder role
-      include_role:
-        name: homelab.nexus.vyos_image_builder
