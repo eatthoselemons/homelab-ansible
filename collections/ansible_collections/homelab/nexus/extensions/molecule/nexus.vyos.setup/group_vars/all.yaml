@@ -1,6 +1,5 @@
 ---
 # Test-specific variables for VyOS setup molecule test
-vyos_test_mode: false
 
 # Override any production defaults for testing
 vyos_configure_router: true

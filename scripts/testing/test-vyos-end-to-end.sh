@@ -92,10 +92,6 @@ while [[ $# -gt 0 ]]; do
             SKIP_BUILD=true
             shift
             ;;
-        --skip-mock)
-            SKIP_MOCK=true
-            shift
-            ;;
         --skip-setup)
             SKIP_SETUP=true
             shift
@@ -164,20 +160,16 @@ echo ""
 # Track timing
 START_TIME=$(date +%s)
 
-# Step 1: Run molecule tests for vyos_image_builder (mock mode)
-if [ "$SKIP_MOCK" = false ]; then
-    print_status "Step 1: Running VyOS image builder mock tests..."
-    cd collections/ansible_collections/homelab/nexus/extensions/
-    if molecule test -s nexus.vyos.image_builder_mock; then
-        print_status "✓ Mock tests passed"
-    else
-        print_error "Mock tests failed"
-        exit 1
-    fi
-    cd "$PROJECT_ROOT"
+# Step 1: Run molecule tests for vyos_image_builder
+print_status "Step 1: Running VyOS image builder tests..."
+cd collections/ansible_collections/homelab/nexus/extensions/
+if molecule test -s nexus.vyos.image_builder; then
+    print_status "✓ Image builder tests passed"
 else
-    print_info "Step 1: Skipping mock tests (--skip-mock)"
+    print_error "Image builder tests failed"
+    exit 1
 fi
+cd "$PROJECT_ROOT"
 echo ""
 
 # Step 2: Build real VyOS image

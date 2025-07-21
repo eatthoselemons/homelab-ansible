@@ -1,6 +1,5 @@
 ---
 # Test-specific variables for VyOS security hardening molecule test
-vyos_test_mode: false
 
 # Security test specific settings
 vyos_security_hardening: true

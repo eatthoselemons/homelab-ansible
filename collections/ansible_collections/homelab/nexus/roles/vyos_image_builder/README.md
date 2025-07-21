@@ -29,9 +29,6 @@ vyos_build_cleanup: true               # Clean up build directory after completi
 
 # Docker
 vyos_docker_image: "vyos/vyos-build:{{ vyos_version }}"  # Docker image to use
-
-# Test mode
-vyos_test_mode: false                  # Enable test mode (creates mock ISO for testing)
 ```
 
 ## Dependencies
@@ -62,13 +59,12 @@ None
     - homelab.nexus.vyos_image_builder
 ```
 
-### Test Mode (for CI/CD)
+### CI/CD Build
 
 ```yaml
 - hosts: localhost
   become: yes
   vars:
-    vyos_test_mode: true
     vyos_images_dir: "/tmp/test-images"
   roles:
     - homelab.nexus.vyos_image_builder
@@ -101,17 +97,7 @@ ansible-playbook build-vyos-image.yaml -e vyos_images_dir=/custom/path
 
 The role includes comprehensive tests:
 
-#### Quick Mock Test (CI/CD)
-```bash
-cd collections/ansible_collections/homelab/nexus/extensions/
-source ~/ansible-venv/bin/activate
-molecule test -s nexus.vyos.image_builder_mock
-```
-- Uses `vyos_test_mode` to create mock ISO files
-- Completes in ~2-3 minutes
-- Perfect for CI/CD pipelines
-
-#### Real Build Test
+#### Build Test
 ```bash
 export ANSIBLE_BECOME_PASSWORD='your_sudo_password'
 ./collections/ansible_collections/homelab/nexus/roles/vyos_image_builder/test-real-build.sh
@@ -138,7 +124,6 @@ export ANSIBLE_BECOME_PASSWORD='your_sudo_password'
 - Building a VyOS image takes approximately 20-30 minutes
 - The build process requires a stable internet connection
 - Built images are placed in the `images/vyos/` directory by default
-- Test mode creates a mock ISO file for quick CI/CD validation
 - The `images/` directory is gitignored to prevent large ISO files from being committed
 - VyOS version mapping:
   - `current`: Latest development version (recommended for open source builds)

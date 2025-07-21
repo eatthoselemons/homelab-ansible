@@ -7,33 +7,6 @@
 - name: Build VyOS image
   when: not vyos_image.stat.exists
   block:
-    - name: Create mock ISO for testing
-      when: vyos_test_mode | default(false)
-      block:
-        # Note: Test mode creates images in a different directory (e.g., /tmp/vyos-images)
-        # Production uses ../images/vyos relative to playbook_dir
-        - name: Ensure images directory exists
-          file:
-            path: "{{ vyos_images_dir }}"
-            state: directory
-            mode: '0755'
-
-        - name: Create mock VyOS ISO
-          command: dd if=/dev/zero of="{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso" bs=1M count=450
-          args:
-            creates: "{{ vyos_images_dir }}/vyos-{{ vyos_version }}.iso"
-
-        - name: Create symlink to latest ISO
-          file:
-            src: "vyos-{{ vyos_version }}.iso"
-            dest: "{{ vyos_images_dir }}/vyos-latest.iso"
-            state: link
-
-- name: Build real VyOS image
-  when: 
-    - not vyos_image.stat.exists
-    - not (vyos_test_mode | default(false))
-  block:
     - name: Check if Docker is already available
       command: docker version
       register: docker_check

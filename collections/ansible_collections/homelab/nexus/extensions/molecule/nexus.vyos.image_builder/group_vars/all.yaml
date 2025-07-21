@@ -1,6 +1,5 @@
 ---
 # Test-specific variables for VyOS image builder molecule test
-vyos_test_mode: true
 
 # Docker socket path for image building
 vyos_docker_socket: /var/run/docker.sock

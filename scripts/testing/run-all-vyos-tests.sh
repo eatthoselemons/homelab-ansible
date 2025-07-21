@@ -23,13 +23,12 @@ VYOS_TESTS=(
     "nexus.vyos.setup"
     "nexus.vyos.vlans"
     "nexus.vyos.security_hardening"
-    "nexus.vyos.image_builder_mock"
     "nexus.vyos.image_builder"
     "nexus.vyos.full_integration"
 )
 
 # Test categories
-UNIT_TESTS=("nexus.vyos.image_builder_mock")
+UNIT_TESTS=()
 INTEGRATION_TESTS=("nexus.vyos.setup" "nexus.vyos.vlans" "nexus.vyos.security_hardening")
 FULL_TESTS=("nexus.vyos.image_builder" "nexus.vyos.full_integration")
 
