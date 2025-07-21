@@ -34,7 +34,7 @@ cd /tmp && /path/to/project/scripts/testing/verify-vyos-image.sh my-vyos.iso
 - Checks file existence and size
 - Validates ISO 9660 format
 - Verifies bootable flag
-- Detects mock vs real images
+- Validates real VyOS images
 - No dependencies beyond standard Unix tools
 
 ### test-vyos-end-to-end.sh
@@ -51,7 +51,7 @@ export ANSIBLE_BECOME_PASSWORD='your_sudo_password'
 ./scripts/testing/test-vyos-end-to-end.sh --skip-build
 
 # Only test image building
-./scripts/testing/test-vyos-end-to-end.sh --skip-setup --skip-mock
+./scripts/testing/test-vyos-end-to-end.sh --skip-setup
 
 # Force rebuild of existing image
 ./scripts/testing/test-vyos-end-to-end.sh --force-rebuild
@@ -62,13 +62,12 @@ export ANSIBLE_BECOME_PASSWORD='your_sudo_password'
 
 **Options:**
 - `--skip-build`: Skip VyOS image building (use existing image)
-- `--skip-mock`: Skip mock molecule tests
 - `--skip-setup`: Skip VyOS setup tests
 - `--force-rebuild`: Force rebuild even if image exists
 - `--help`: Show detailed help message
 
 **Test Stages:**
-1. Mock molecule tests (~3 minutes)
+1. Image builder tests (~3 minutes)
 2. VyOS image building (~30 minutes, skippable)
 3. Image verification
 4. VyOS setup component tests (~10 minutes)
@@ -99,9 +98,9 @@ export ANSIBLE_BECOME_PASSWORD='your_password'
 
 ### CI/CD Pipeline
 ```bash
-# Fast mock tests only
+# Quick syntax check
 cd collections/ansible_collections/homelab/nexus/extensions/
-molecule test -s nexus.vyos.image_builder_mock
+molecule syntax -s nexus.vyos.setup
 ```
 
 ## Requirements

@@ -23,13 +23,12 @@ VYOS_TESTS=(
     "nexus.vyos.setup"
     "nexus.vyos.vlans"
     "nexus.vyos.security_hardening"
-    "nexus.vyos.image_builder_mock"
     "nexus.vyos.image_builder"
     "nexus.vyos.full_integration"
 )
 
 # Test categories
-UNIT_TESTS=("nexus.vyos.image_builder_mock")
+UNIT_TESTS=()
 INTEGRATION_TESTS=("nexus.vyos.setup" "nexus.vyos.vlans" "nexus.vyos.security_hardening")
 FULL_TESTS=("nexus.vyos.image_builder" "nexus.vyos.full_integration")
 
@@ -135,9 +134,9 @@ check_vyos_image() {
         local size_mb=$((size / 1024 / 1024))
         print_info "VyOS image found: $image_path (${size_mb}MB)"
         
-        # Check if it's a mock image (exactly 450MB)
+        # Check if it's a test image (exactly 450MB)
         if [ "$size_mb" -eq 450 ]; then
-            print_warning "Detected mock VyOS image"
+            print_warning "Detected test VyOS image (450MB)"
             return 1
         fi
         return 0

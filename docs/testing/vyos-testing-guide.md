@@ -5,7 +5,6 @@ This guide explains how to run VyOS tests in the homelab-ansible project.
 ## Overview
 
 The VyOS testing infrastructure supports multiple test levels:
-- **Unit Tests**: Mock-based tests that don't require real infrastructure
 - **Integration Tests**: Tests that verify configuration and basic functionality
 - **Full Tests**: Complete end-to-end tests requiring KVM/libvirt and real VyOS images
 
@@ -19,7 +18,7 @@ The VyOS testing infrastructure supports multiple test levels:
 ### Required for Full Tests
 - KVM/QEMU support (`/dev/kvm` available)
 - libvirt installed and running
-- Real VyOS ISO image (not mock)
+- Real VyOS ISO image
 - Sudo or root access for VM operations
 
 ## Quick Start
@@ -60,9 +59,6 @@ The VyOS testing infrastructure supports multiple test levels:
 # Run with debug output
 ./test.sh --debug test nexus.vyos.setup
 
-# Force mock test mode (regardless of image availability)
-./test.sh --mock test nexus.vyos.setup
-
 # Force real test mode (requires valid VyOS image)
 ./test.sh --real test nexus.vyos.setup
 ```
@@ -83,9 +79,6 @@ The VyOS testing infrastructure supports multiple test levels:
 ```
 
 ## Test Scenarios
-
-### Unit Tests
-- `nexus.vyos.image_builder_mock` - Tests image building with mock ISO
 
 ### Integration Tests
 - `nexus.vyos.setup` - Tests VyOS VM setup and configuration
@@ -117,16 +110,15 @@ See [Infisical Setup Guide](../setup/infisical-setup.md) for detailed configurat
 
 ## Test Modes
 
-### Automatic Test Mode Detection
-The `test.sh` script automatically detects the best test mode:
-- **Real Mode**: When a valid VyOS ISO image is found (>500MB, ISO 9660 format)
-- **Mock Mode**: When no valid image is found or only mock images are present
+### Test Requirements
+The `test.sh` script requires a valid VyOS ISO image:
+- **Real Mode**: A valid VyOS ISO image is required (>500MB, ISO 9660 format)
+- Tests will fail if no valid image is found
 
 ### Container Testing
 When running in Docker containers:
-- Only unit tests run by default
-- Mock implementations are used for VM/network operations
-- No KVM access required
+- Requires KVM access for full functionality
+- May need privileged mode or --device /dev/kvm
 
 ### Bare Metal Testing
 When running on physical/virtual machines:
@@ -139,7 +131,7 @@ The test runners automatically detect:
 - Container vs bare metal environment
 - KVM availability
 - Privilege level
-- VyOS image type (real vs mock)
+- VyOS image validity
 - Valid VyOS image presence using `verify-vyos-image.sh`
 
 ## Troubleshooting
@@ -155,9 +147,8 @@ The test runners automatically detect:
 - Check permissions: `sudo usermod -aG libvirt $USER`
 
 #### Tests skip everything
-- Check if `vyos_test_mode` is set to false
+- Check if a valid VyOS image exists
 - Use the enhanced test runner for proper mode detection
-- Review mock implementations in `tasks/test_mocks/`
 
 ### Debug Options
 
@@ -190,13 +181,13 @@ The test runners automatically detect:
 ### Custom Test Scenarios
 1. Create new molecule scenario in `extensions/molecule/`
 2. Use existing scenarios as templates
-3. Set `vyos_test_mode: true` for container-safe testing
-4. Use mock tasks for operations that require privileges
+3. Ensure tests can run in containers with appropriate privileges
+4. Test with real infrastructure when possible
 
 ## Test Best Practices
 
 1. **Always run full tests** when verifying functionality
-2. **Use mocks appropriately** for container environments
+2. **Ensure proper environment setup** for container environments
 3. **Check test output** for skipped tasks - they may indicate issues
 4. **Keep tests idempotent** - they should pass when run multiple times
 5. **Document requirements** for tests that need special setup
@@ -206,5 +197,5 @@ The test runners automatically detect:
 When adding new VyOS tests:
 1. Determine appropriate test level (unit/integration/full)
 2. Add to the correct test arrays in `run-all-vyos-tests.sh`
-3. Ensure mock implementations exist for test mode
+3. Ensure tests work with real infrastructure
 4. Update this documentation with any new requirements

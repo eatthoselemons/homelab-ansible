@@ -24,7 +24,7 @@
 #   - File size (warns if < 500MB)
 #   - ISO 9660 format
 #   - Bootable flag
-#   - Detects mock vs real images
+#   - Validates real VyOS images
 #
 # EXIT CODES:
 #   0 - Verification passed
@@ -84,7 +84,7 @@ echo "  File size: ${ISO_SIZE_MB} MB ($(printf "%'d" $ISO_SIZE) bytes)"
 
 if [ $ISO_SIZE -lt 500000000 ]; then
     if [ $ISO_SIZE -eq 471859200 ]; then  # Exactly 450MB
-        echo "  ℹ️  This is a mock test image (exactly 450MB)"
+        echo "  ⚠️  This appears to be a test image (exactly 450MB)"
     else
         echo "  ⚠️  Warning: ISO seems small for a real VyOS image (expected > 500MB)"
     fi
@@ -116,8 +116,9 @@ fi
 echo ""
 echo "📋 Summary:"
 if [ $ISO_SIZE -eq 471859200 ]; then
-    echo "  Type: Mock test image"
-    echo "  Status: Valid for testing"
+    echo "  Type: Test image (450MB)"
+    echo "  Status: Invalid for testing"
+    return 1
 elif [ "$FORMAT_OK" = true ] && [ $ISO_SIZE -gt 500000000 ]; then
     echo "  Type: Real VyOS image"
     echo "  Status: ✅ Ready for deployment"

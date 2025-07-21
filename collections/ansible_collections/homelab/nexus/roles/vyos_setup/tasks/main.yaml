@@ -1,15 +1,5 @@
 ---
-- name: Check if we have required secrets
-  when: vyos_test_mode | default(false)
-  assert:
-    that:
-      - vyos_admin_password is defined
-      - vyos_ansible_ssh_key is defined
-      - vyos_ansible_ssh_private_key is defined
-    fail_msg: "Test mode requires vyos_admin_password, vyos_ansible_ssh_key, and vyos_ansible_ssh_private_key to be set by prepare.yaml"
-
 - name: Validate Infisical environment variables
-  when: not (vyos_test_mode | default(false))
   block:
     - name: Check INFISICAL_CLIENT_ID is set
       assert:
@@ -154,11 +144,6 @@
 
 - name: Configure libvirt networks
   include_tasks: configure_networks.yaml
-  when: not (vyos_test_mode | default(false))
-
-- name: Use mock network operations in test mode
-  when: vyos_test_mode | default(false)
-  include_tasks: test_mocks/mock_network.yaml
 
 - name: Create base VyOS VM if requested
   when: vyos_create_base_image | default(false)
@@ -199,18 +184,12 @@
         wait: 0
         poweroff: false
         reboot: false
-  when: not (vyos_test_mode | default(false))
-
-- name: Use mock VM operations in test mode
-  when: vyos_test_mode | default(false)
-  include_tasks: test_mocks/mock_vm.yaml
 
 - name: Check if VM already exists
   community.libvirt.virt:
     name: "{{ vyos_vm.name }}"
     command: list_vms
   register: existing_vms
-  when: not (vyos_test_mode | default(false))
 
 - name: Define VM using XML template
   community.libvirt.virt:
@@ -219,15 +198,12 @@
     autostart: yes
   vars:
     vyos_vm_disk_path: "{{ vyos_vm_disk_path }}"
-  when: 
-    - not (vyos_test_mode | default(false))
-    - vyos_vm.name not in existing_vms.list_vms
+  when: vyos_vm.name not in existing_vms.list_vms
 
 - name: Start VM
   community.libvirt.virt:
     name: "{{ vyos_vm.name }}"
     state: running
-  when: not (vyos_test_mode | default(false))
 
 - name: Wait for VyOS to be accessible
   wait_for:
@@ -235,25 +211,14 @@
     port: "{{ vyos_ssh_port }}"
     delay: 60
     timeout: 600
-  when: not (vyos_test_mode | default(false))
 
 - name: Apply VyOS configuration
   include_tasks: vyos_config.yaml
-  when: 
-    - vyos_configure_router | default(true)
-    - not (vyos_test_mode | default(false))
-
-- name: Use mock VyOS configuration in test mode
-  include_tasks: test_mocks/mock_vyos_config.yaml
-  when:
-    - vyos_configure_router | default(true)
-    - vyos_test_mode | default(false)
+  when: vyos_configure_router | default(true)
 
 - name: Apply security hardening
   include_tasks: security_hardening.yaml
-  when: 
-    - vyos_security_hardening | default(true)
-    - not (vyos_test_mode | default(false))
+  when: vyos_security_hardening | default(true)
 
 - name: Configure VLANs
   include_tasks: vlan_setup.yaml

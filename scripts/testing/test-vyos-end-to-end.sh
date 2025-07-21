@@ -12,7 +12,6 @@
 #
 # OPTIONS:
 #   --skip-build       Skip VyOS image building (use existing image)
-#   --skip-mock        Skip mock molecule tests
 #   --skip-setup       Skip VyOS setup tests
 #   --force-rebuild    Force rebuild even if image exists
 #   --help            Show this help message
@@ -26,7 +25,7 @@
 #   ./test-vyos-end-to-end.sh --skip-build
 #
 #   # Only test image building and verification
-#   ./test-vyos-end-to-end.sh --skip-setup --skip-mock
+#   ./test-vyos-end-to-end.sh --skip-setup
 #
 # REQUIREMENTS:
 #   - Docker installed and running
@@ -38,7 +37,6 @@
 # DURATION:
 #   - Full run: ~45-60 minutes
 #   - With --skip-build: ~15-20 minutes
-#   - Mock tests only: ~5 minutes
 #
 
 set -e
@@ -57,7 +55,6 @@ NC='\033[0m' # No Color
 
 # Default options
 SKIP_BUILD=false
-SKIP_MOCK=false
 SKIP_SETUP=false
 FORCE_REBUILD=false
 
@@ -92,10 +89,6 @@ while [[ $# -gt 0 ]]; do
             SKIP_BUILD=true
             shift
             ;;
-        --skip-mock)
-            SKIP_MOCK=true
-            shift
-            ;;
         --skip-setup)
             SKIP_SETUP=true
             shift
@@ -125,7 +118,6 @@ echo ""
 # Show configuration
 print_info "Test Configuration:"
 echo "  Skip Build: $SKIP_BUILD"
-echo "  Skip Mock Tests: $SKIP_MOCK"
 echo "  Skip Setup Tests: $SKIP_SETUP"
 echo "  Force Rebuild: $FORCE_REBUILD"
 echo ""
@@ -154,7 +146,6 @@ fi
 
 if ! command -v molecule &> /dev/null; then
     print_warning "molecule is not installed, skipping molecule tests"
-    SKIP_MOCK=true
     SKIP_SETUP=true
 fi
 
@@ -164,20 +155,16 @@ echo ""
 # Track timing
 START_TIME=$(date +%s)
 
-# Step 1: Run molecule tests for vyos_image_builder (mock mode)
-if [ "$SKIP_MOCK" = false ]; then
-    print_status "Step 1: Running VyOS image builder mock tests..."
-    cd collections/ansible_collections/homelab/nexus/extensions/
-    if molecule test -s nexus.vyos.image_builder_mock; then
-        print_status "✓ Mock tests passed"
-    else
-        print_error "Mock tests failed"
-        exit 1
-    fi
-    cd "$PROJECT_ROOT"
+# Step 1: Run molecule tests for vyos_image_builder
+print_status "Step 1: Running VyOS image builder tests..."
+cd collections/ansible_collections/homelab/nexus/extensions/
+if molecule test -s nexus.vyos.image_builder; then
+    print_status "✓ Image builder tests passed"
 else
-    print_info "Step 1: Skipping mock tests (--skip-mock)"
+    print_error "Image builder tests failed"
+    exit 1
 fi
+cd "$PROJECT_ROOT"
 echo ""
 
 # Step 2: Build real VyOS image
@@ -276,8 +263,7 @@ print_status "✅ ALL TESTS PASSED SUCCESSFULLY!"
 echo "================================================"
 echo ""
 print_info "Test Summary:"
-if [ "$SKIP_MOCK" = false ]; then
-    echo "  ✓ VyOS image builder mock tests: PASSED"
+    echo "  ✓ VyOS image builder tests: PASSED"
 fi
 if [ "$SKIP_BUILD" = false ]; then
     echo "  ✓ VyOS image build: COMPLETED"

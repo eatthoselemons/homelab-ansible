@@ -12,6 +12,5 @@ vyos_build_by: 'homelab-ansible'
 vyos_build_type: release
 vyos_docker_image: "vyos/vyos-build:{{ vyos_version }}"
 vyos_build_cleanup: true
-vyos_test_mode: false
 # Build flavor depends on version - current uses 'generic', sagitta uses 'iso'
 vyos_build_flavor: "{{ 'generic' if vyos_version == 'current' else 'iso' }}"

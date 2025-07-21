@@ -28,7 +28,7 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export VYOS_IMAGE_PATH="${PROJECT_ROOT}/images/vyos"
 
-# Function to check for valid real VyOS image (not mock)
+# Function to check for valid real VyOS image
 check_vyos_image() {
     local image_path="${VYOS_IMAGE_PATH}/vyos-current.iso"
     local verify_script="${PROJECT_ROOT}/scripts/testing/verify-vyos-image.sh"
@@ -38,7 +38,7 @@ check_vyos_image() {
         local verify_output
         verify_output=$("$verify_script" "$image_path" 2>/dev/null)
         
-        # Check if the output indicates a real VyOS image (not mock)
+        # Check if the output indicates a real VyOS image
         if echo "$verify_output" | grep -q "Type: Real VyOS image"; then
             return 0  # Real VyOS image found
         fi
@@ -59,7 +59,6 @@ NC='\033[0m' # No Color
 # Default options
 PATTERN_MODE=false
 DEBUG_MODE=false
-FORCE_MOCK=false
 FORCE_REAL=false
 
 # Function to print colored output
@@ -200,10 +199,6 @@ while [[ $# -gt 0 ]]; do
             DEBUG_MODE=true
             shift
             ;;
-        --mock)
-            FORCE_MOCK=true
-            shift
-            ;;
         --real)
             FORCE_REAL=true
             shift
@@ -222,7 +217,6 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --pattern, -p     Run tests matching pattern (use with scenario as pattern)"
             echo "  --debug           Enable molecule debug output"
-            echo "  --mock            Force mock test mode (regardless of image availability)"
             echo "  --real            Force real test mode (requires valid VyOS image)"
             echo "  --help, -h        Show this help message"
             echo ""
@@ -231,7 +225,6 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 test nexus.vyos.setup"
             echo "  $0 --pattern vyos                # Run all vyos tests"
             echo "  $0 --debug test nexus.vyos.vlans"
-            echo "  $0 --mock test nexus.vyos.setup  # Force mock mode"
             echo "  $0 --real test nexus.vyos.setup  # Force real mode"
             exit 0
             ;;
@@ -258,13 +251,8 @@ done
 COMMAND=${COMMAND:-list}
 
 # Determine test mode based on options and image availability
-if [ "$FORCE_MOCK" = true ] && [ "$FORCE_REAL" = true ]; then
-    print_error "Cannot use both --mock and --real options"
-    exit 1
-elif [ "$FORCE_MOCK" = true ]; then
-    export VYOS_TEST_MODE="true"
-    print_info "Forced mock test mode"
-elif [ "$FORCE_REAL" = true ]; then
+if [ "$FORCE_REAL" = true ]; then
+    export VYOS_TEST_MODE="false"
     if check_vyos_image; then
         export VYOS_TEST_MODE="false"
         print_info "Forced real test mode - using VyOS image"
@@ -279,8 +267,9 @@ else
         export VYOS_TEST_MODE="false"
         print_info "Real VyOS image detected - running full tests"
     else
-        export VYOS_TEST_MODE="true"
-        print_info "No real VyOS image found - using mock tests"
+        print_error "No real VyOS image found - cannot run tests"
+        print_info "Please build a VyOS image first using: ansible-playbook build-vyos-image.yaml"
+        exit 1
     fi
 fi
 
