@@ -25,22 +25,6 @@ platforms:
 
 provisioner:
   name: ansible
-  inventory:
-    host_vars:
-      vyos-integration-test:
-        vyos_network_mode: nat
-        vyos_build_image: false
-        vyos_iso_path: /tmp/test-vyos.iso
-        vyos_configure_router: true
-        vyos_enable_vlans: true
-        vyos_security_hardening: true
-        vyos_cloud_init_enabled: true
-        vyos_admin_user: admin
-        vyos_admin_password: "IntegrationTest123!"
-        vyos_admin_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDint integration@homelab"
-        vyos_enable_fail2ban: true
-        vyos_configure_host_vlans: false
-        vyos_use_ovs: false
 
 verifier:
   name: ansible

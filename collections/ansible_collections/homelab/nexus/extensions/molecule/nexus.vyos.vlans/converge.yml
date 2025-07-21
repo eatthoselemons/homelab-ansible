@@ -21,5 +21,5 @@
 
     - name: Include VLAN setup task
       include_role:
-        name: ../../../roles/vyos_setup
+        name: homelab.nexus.vyos_setup
         tasks_from: vlan_setup.yaml

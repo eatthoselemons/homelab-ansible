@@ -2,10 +2,10 @@
 - name: Converge
   hosts: all
   vars:
-    vyos_base_image: "{{ playbook_dir }}/../../../../../../images/vyos/vyos-base.qcow2"
+    vyos_base_image: "{{ lookup('env', 'VYOS_BASE_IMAGE') | default(playbook_dir + '/../../../../../../images/vyos/vyos-base.qcow2') }}"
     vyos_base_image_checksum_file: "{{ vyos_base_image }}.sha1"
-    vyos_iso_path: "/opt/vyos/vyos-current.iso"
-    vyos_test_image: "/tmp/vyos-test-{{ lookup('pipe', 'date +%s%N') }}.qcow2"
+    vyos_iso_path: "{{ lookup('env', 'VYOS_ISO_PATH') | default('/opt/vyos/vyos-current.iso') }}"
+    vyos_test_image: "{{ molecule_ephemeral_directory }}/vyos-test-{{ lookup('pipe', 'date +%s%N') }}.qcow2"
 
   tasks:
     - name: Install required packages for testing
@@ -76,7 +76,7 @@
 
         - name: Create base image with vyos_setup
           include_role:
-            name: ../../../roles/vyos_setup
+            name: homelab.nexus.vyos_setup
           vars:
             vyos_create_base_image: true
             vyos_vm_disk_path: "{{ vyos_base_image }}"

@@ -3,9 +3,9 @@
   hosts: all
   tasks:
     - name: Create test VyOS ISO placeholder
-      command: truncate -s 500M /tmp/test-vyos.iso
+      command: truncate -s 500M {{ vyos_iso_path }}
       args:
-        creates: /tmp/test-vyos.iso
+        creates: "{{ vyos_iso_path }}"
 
     - name: Install required packages
       apt:
@@ -27,7 +27,7 @@
 
     - name: Include vyos_setup role with full configuration
       include_role:
-        name: ../../../roles/vyos_setup
+        name: homelab.nexus.vyos_setup
       vars:
         vyos_admin_ssh_key: "{{ ssh_key.public_key }}"
         vyos_test_mode: true
