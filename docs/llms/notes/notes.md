@@ -1,16 +1,16 @@
 # Notes on stafwag.delegated_vm_install Issues and Fixes
 
-## Issue 1: Namespace Error in add_disk.yml
+## Issue 1: Namespace Error in add_disk.yaml
 
 ### Problem
-The role uses `builtin.set_fact` instead of `ansible.builtin.set_fact` in `/home/user/.ansible/roles/stafwag.delegated_vm_install/tasks/add_disk.yml`. This causes an error in newer Ansible versions:
+The role uses `builtin.set_fact` instead of `ansible.builtin.set_fact` in `/home/user/.ansible/roles/stafwag.delegated_vm_install/tasks/add_disk.yaml`. This causes an error in newer Ansible versions:
 
 ```
 ERROR! couldn't resolve module/action 'builtin.set_fact'. This often indicates a misspelling, missing collection, or incorrect module path.
 ```
 
 ### Fix Applied
-Changed lines 17, 26, and 38 in `add_disk.yml`:
+Changed lines 17, 26, and 38 in `add_disk.yaml`:
 - From: `builtin.set_fact`
 - To: `ansible.builtin.set_fact`
 
@@ -32,7 +32,7 @@ If you are using a module and expect the file to exist on the remote, see the re
 ### Investigation
 1. The role uses stafwag.qemu_img internally, which DOES support `remote_src` parameter
 2. However, delegated_vm_install doesn't pass through `remote_src` from the boot_disk configuration
-3. In `tasks/delegate_vms.yml`, the role creates the _qemu_img array but only includes specific fields:
+3. In `tasks/delegate_vms.yaml`, the role creates the _qemu_img array but only includes specific fields:
    - dest, format, src, size, owner, group, mode
    - It does NOT include remote_src even if provided
 
@@ -60,7 +60,7 @@ The delegated_vm_install role is a wrapper around:
 Since qemu_img supports remote_src, the fix would be to modify delegated_vm_install to pass this parameter through.
 
 ### Fix Applied for remote_src
-Modified `/home/user/.ansible/roles/stafwag.delegated_vm_install/tasks/delegate_vms.yml` to include remote_src in the _qemu_img array creation (around line 206):
+Modified `/home/user/.ansible/roles/stafwag.delegated_vm_install/tasks/delegate_vms.yaml` to include remote_src in the _qemu_img array creation (around line 206):
 
 ```yaml
 - name: Create _qemu_img array

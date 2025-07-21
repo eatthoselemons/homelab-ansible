@@ -71,7 +71,7 @@ if [ ! -f "$IMAGE_PATH" ]; then
     echo "  - $PROJECT_ROOT/$DEFAULT_IMAGE"
     echo ""
     echo "To build a VyOS image, run:"
-    echo "  ansible-playbook build-vyos-image.yml"
+    echo "  ansible-playbook build-vyos-image.yaml"
     exit 1
 fi
 

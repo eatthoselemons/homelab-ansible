@@ -115,7 +115,7 @@ ssh prod-server
 
 ### 1. Inventory Configuration
 ```yaml
-# inventory.yml
+# inventory.yaml
 all:
   children:
     management:
@@ -133,7 +133,7 @@ ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o ProxyJump=jumpadmin@10
 
 ### 3. Dynamic Jump Host Configuration
 ```yaml
-# group_vars/management.yml
+# group_vars/management.yaml
 ansible_ssh_common_args: >-
   -o ProxyCommand="ssh -W %h:%p -q jumpadmin@{{ jumphost_ip }} -p {{ jumphost_port }}"
 ```
@@ -220,15 +220,15 @@ findtime = 600
 
 ### Ansible Role Structure
 ```yaml
-# roles/jumphost/tasks/main.yml
+# roles/jumphost/tasks/main.yaml
 - name: Configure jumphost
   include_tasks: "{{ item }}"
   loop:
-    - install.yml
-    - ssh_hardening.yml
-    - firewall.yml
-    - monitoring.yml
-    - users.yml
+    - install.yaml
+    - ssh_hardening.yaml
+    - firewall.yaml
+    - monitoring.yaml
+    - users.yaml
 ```
 
 ## Maintenance

@@ -208,7 +208,7 @@ echo "  Builder: $USER"
 echo ""
 
 # Run ansible-playbook directly without building command string
-if ansible-playbook build-vyos-image.yml \
+if ansible-playbook build-vyos-image.yaml \
     -e "vyos_version=$VYOS_VERSION" \
     -e "vyos_build_type=$VYOS_BUILD_TYPE" \
     -e "vyos_architecture=$VYOS_ARCHITECTURE" \

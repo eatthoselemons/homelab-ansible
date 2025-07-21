@@ -39,7 +39,7 @@ vyos_web_port: 443
 
 # Security Configuration
 vyos_admin_user: admin
-# These should be overridden by prepare.yml in test mode or set from Infisical in production
+# These should be overridden by prepare.yaml in test mode or set from Infisical in production
 # Providing defaults to avoid undefined variable errors
 vyos_admin_password: "TestPassword123!"
 vyos_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC test@molecule"

@@ -53,11 +53,11 @@ Create comprehensive molecule tests for the `vyos_image_builder` role that:
   why: Shows branch mapping - sagitta = 1.4 LTS
   gotcha: Default branch is 'current', must checkout 'sagitta' for 1.4
   
-- file: collections/ansible_collections/homelab/nexus/roles/vyos_image_builder/tasks/main.yml
+- file: collections/ansible_collections/homelab/nexus/roles/vyos_image_builder/tasks/main.yaml
   why: Existing implementation to test
   gotcha: Uses docker_container module which may need privileged mode in tests
   
-- file: collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.setup/molecule.yml
+- file: collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.vyos.setup/molecule.yaml
   why: Reference test pattern for VyOS-related tests
   critical: Shows Docker driver config with privileged mode and /dev/kvm access
   
@@ -75,9 +75,9 @@ Create comprehensive molecule tests for the `vyos_image_builder` role that:
 collections/ansible_collections/homelab/nexus/
 ├── roles/
 │   ├── vyos_image_builder/
-│   │   ├── defaults/main.yml         # Has vyos_images_dir: "../images/vyos"
-│   │   ├── handlers/main.yml         # Cleanup handler
-│   │   ├── tasks/main.yml           # Build logic to test
+│   │   ├── defaults/main.yaml         # Has vyos_images_dir: "../images/vyos"
+│   │   ├── handlers/main.yaml         # Cleanup handler
+│   │   ├── tasks/main.yaml           # Build logic to test
 │   │   └── README.md
 │   └── vyos_setup/
 │       └── tasks/main.yaml          # Includes vyos_image_builder role
@@ -95,10 +95,10 @@ collections/ansible_collections/homelab/nexus/
 └── extensions/
     └── molecule/
         └── nexus.vyos.image_builder/  # NEW test scenario
-            ├── molecule.yml            # Test configuration
-            ├── converge.yml           # Run the role
-            ├── verify.yml             # Validate ISO creation
-            └── requirements.yml       # Galaxy dependencies
+            ├── molecule.yaml            # Test configuration
+            ├── converge.yaml           # Run the role
+            ├── verify.yaml             # Validate ISO creation
+            └── requirements.yaml       # Galaxy dependencies
 ```
 
 ### Known Gotchas & Library Quirks
@@ -128,33 +128,33 @@ CREATE collections/ansible_collections/homelab/nexus/extensions/molecule/nexus.v
   - MIRROR structure from: nexus.vyos.setup test scenario
   - KEEP naming pattern consistent
 
-Task 3: Create molecule.yml configuration
-CREATE molecule.yml:
+Task 3: Create molecule.yaml configuration
+CREATE molecule.yaml:
   - USE Docker driver with privileged mode
   - MOUNT /var/run/docker.sock for Docker-in-Docker
   - SET longer timeout for build process (45 minutes)
   - CONFIGURE test-specific variables
 
-Task 4: Create converge.yml to run the role
-CREATE converge.yml:
+Task 4: Create converge.yaml to run the role
+CREATE converge.yaml:
   - INCLUDE vyos_image_builder role
   - SET test-specific paths for ISO storage
   - OVERRIDE vyos_version to 'sagitta' for 1.4
 
-Task 5: Create comprehensive verify.yml
-CREATE verify.yml:
+Task 5: Create comprehensive verify.yaml
+CREATE verify.yaml:
   - CHECK Docker is running
   - VERIFY ISO file exists and size > 400MB
   - VALIDATE ISO is bootable format
   - TEST idempotency markers
 
-Task 6: Create requirements.yml for dependencies
-CREATE requirements.yml:
+Task 6: Create requirements.yaml for dependencies
+CREATE requirements.yaml:
   - INCLUDE community.docker collection
   - ADD any other required collections
 
 Task 7: Update role to handle test environment
-MODIFY vyos_image_builder/tasks/main.yml if needed:
+MODIFY vyos_image_builder/tasks/main.yaml if needed:
   - ENSURE paths work in test container
   - ADD conditional logic for test mode if required
 ```
@@ -201,7 +201,7 @@ molecule verify -s nexus.vyos.image_builder
 
 ### Level 3: Verify ISO Creation
 ```python
-# In verify.yml, test cases should include:
+# In verify.yaml, test cases should include:
 
 - name: Check ISO exists
   stat:
