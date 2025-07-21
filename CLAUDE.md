@@ -23,6 +23,7 @@
 - **Handlers**: Service restarts and notifications in `handlers/main.yaml`
 - **Avoid bash scripts**: Use structured Ansible configuration blocks
 - **Newlines**: Always have newlines at the end of files
+- **File extensions**: Always use `.yaml` extension, never `.yml`
 
 ### 🧪 Testing & Reliability
 - **Always create molecule unit tests for new features** (functions, classes, routes, etc).
