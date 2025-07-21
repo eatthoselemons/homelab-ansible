@@ -21,10 +21,6 @@
 
     - name: Include vyos_setup role with security hardening
       include_role:
-        name: ../../../roles/vyos_setup
+        name: homelab.nexus.vyos_setup
       vars:
         vyos_admin_ssh_key: "{{ ssh_key.public_key }}"
-        vyos_test_mode: false
-        vyos_vm_name: vyos-security-test
-        vyos_vm_memory: 2048
-        vyos_vm_cpus: 2

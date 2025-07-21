@@ -1,9 +1,12 @@
 ---
 # Infisical Configuration
-infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
-infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
-infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
-infisical_url: "https://app.infisical.com"
+vyos_infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+
+vyos_infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+
+vyos_infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
+
+vyos_infisical_url: "https://app.infisical.com"
 
 # VyOS VM Configuration
 vyos_vm:
@@ -14,13 +17,24 @@ vyos_vm:
   disk_path: /var/lib/libvirt/images/vyos-router.qcow2
 
 # VyOS Build Configuration
+# Whether to build a new VyOS image from ISO
 vyos_build_image: false
+
+# Path to the VyOS ISO file
+# Use VYOS_ISO_PATH environment variable to override
 vyos_iso_path: "{{ playbook_dir }}/../images/vyos/vyos-current.iso"
+
+# Path where cloud-init ISO will be created
 vyos_cloud_init_iso: /var/lib/libvirt/images/vyos-cloud-init.iso
 
 # VyOS Network Configuration
+# IP address assigned to the VyOS VM
 vyos_vm_ip: "192.168.122.50"
+
+# SSH port for accessing VyOS (mapped from VM port 22)
 vyos_ssh_port: 2222
+
+# HTTPS port for VyOS web interface
 vyos_web_port: 443
 
 # Security Configuration
@@ -38,15 +52,27 @@ vyos_cloud_init_enabled: true
 # Fail2ban Configuration
 vyos_enable_fail2ban: true
 
-# Network Mode (bridge for production, nat for testing)
+# Network Mode Configuration
+# Options: bridge (production), nat (testing), macvtap
 vyos_network_mode: bridge
+
+# Enable VLAN configuration on the router
 vyos_enable_vlans: true
+
+# Configure router settings (firewall, NAT, etc.)
 vyos_configure_router: true
+
+# Configure VLANs on the host system
 vyos_configure_host_vlans: false
+
+# Use Open vSwitch for networking (recommended for production)
 vyos_use_ovs: true
+
+# Interface that will carry VLAN traffic
 vyos_trunk_interface: "eth1"
 
 # WAN Interface Configuration
+# Interface connected to the internet/upstream network
 vyos_wan_interface: "eth0"
 vyos_wan_dhcp: true
 

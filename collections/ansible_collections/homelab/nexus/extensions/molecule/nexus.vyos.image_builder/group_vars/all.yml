@@ -1,0 +1,10 @@
+---
+# Test-specific variables for VyOS image builder molecule test
+vyos_test_mode: true
+
+# Docker socket path for image building
+vyos_docker_socket: /var/run/docker.sock
+
+# Image builder specific settings
+vyos_build_image: true
+vyos_image_output_dir: "{{ molecule_ephemeral_directory }}"

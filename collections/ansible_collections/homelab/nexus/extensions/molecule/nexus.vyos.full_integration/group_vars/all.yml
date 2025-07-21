@@ -1,0 +1,24 @@
+---
+# Full integration test variables for VyOS setup
+# These override the role defaults for comprehensive testing
+
+# Network configuration
+vyos_network_mode: nat
+vyos_configure_router: true
+vyos_enable_vlans: true
+vyos_configure_host_vlans: false
+vyos_use_ovs: false
+
+# Image configuration
+vyos_build_image: false
+vyos_iso_path: "{{ lookup('env', 'VYOS_ISO_PATH') | default('/tmp/test-vyos.iso') }}"
+
+# Security configuration
+vyos_security_hardening: true
+vyos_enable_fail2ban: true
+vyos_cloud_init_enabled: true
+
+# Admin user configuration
+vyos_admin_user: admin
+vyos_admin_password: "{{ lookup('env', 'VYOS_TEST_PASSWORD') | default('IntegrationTest123!') }}"
+vyos_admin_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDint integration@homelab"

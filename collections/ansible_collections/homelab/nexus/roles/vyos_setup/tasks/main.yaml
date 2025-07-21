@@ -14,36 +14,36 @@
     - name: Check INFISICAL_CLIENT_ID is set
       assert:
         that:
-          - infisical_client_id is defined
-          - infisical_client_id | length > 0
+          - vyos_infisical_client_id is defined
+          - vyos_infisical_client_id | length > 0
         fail_msg: "INFISICAL_CLIENT_ID environment variable must be set. Please export INFISICAL_CLIENT_ID with your Infisical client ID."
         success_msg: "INFISICAL_CLIENT_ID is set"
 
     - name: Check INFISICAL_CLIENT_SECRET is set
       assert:
         that:
-          - infisical_client_secret is defined
-          - infisical_client_secret | length > 0
+          - vyos_infisical_client_secret is defined
+          - vyos_infisical_client_secret | length > 0
         fail_msg: "INFISICAL_CLIENT_SECRET environment variable must be set. Please export INFISICAL_CLIENT_SECRET with your Infisical client secret."
         success_msg: "INFISICAL_CLIENT_SECRET is set"
 
     - name: Check INFISICAL_PROJECT_ID is set
       assert:
         that:
-          - infisical_project_id is defined
-          - infisical_project_id | length > 0
+          - vyos_infisical_project_id is defined
+          - vyos_infisical_project_id | length > 0
         fail_msg: "INFISICAL_PROJECT_ID environment variable must be set. Please export INFISICAL_PROJECT_ID with your Infisical project ID."
         success_msg: "INFISICAL_PROJECT_ID is set"
 
     - name: Retrieve systemSudoPassword from Infisical
       set_fact:
         vyos_admin_password_raw: "{{ lookup('infisical.vault.read_secrets',
-            universal_auth_client_id=infisical_client_id,
-            universal_auth_client_secret=infisical_client_secret,
-            project_id=infisical_project_id,
+            universal_auth_client_id=vyos_infisical_client_id,
+            universal_auth_client_secret=vyos_infisical_client_secret,
+            project_id=vyos_infisical_project_id,
             path='/',
             env_slug='prod',
-            url=infisical_url,
+            url=vyos_infisical_url,
             secret_name='systemSudoPassword'
           ) }}"
 
@@ -55,21 +55,21 @@
     - name: Retrieve remaining secrets from Infisical
       set_fact:
         vyos_ansible_ssh_key: "{{ lookup('infisical.vault.read_secrets',
-            universal_auth_client_id=infisical_client_id,
-            universal_auth_client_secret=infisical_client_secret,
-            project_id=infisical_project_id,
+            universal_auth_client_id=vyos_infisical_client_id,
+            universal_auth_client_secret=vyos_infisical_client_secret,
+            project_id=vyos_infisical_project_id,
             path='/',
             env_slug='prod',
-            url=infisical_url,
+            url=vyos_infisical_url,
             secret_name='nexusAnsiblePublicSshKey'
           ).value }}"
         vyos_ansible_ssh_private_key: "{{ lookup('infisical.vault.read_secrets',
-            universal_auth_client_id=infisical_client_id,
-            universal_auth_client_secret=infisical_client_secret,
-            project_id=infisical_project_id,
+            universal_auth_client_id=vyos_infisical_client_id,
+            universal_auth_client_secret=vyos_infisical_client_secret,
+            project_id=vyos_infisical_project_id,
             path='/',
             env_slug='prod',
-            url=infisical_url,
+            url=vyos_infisical_url,
             secret_name='nexusAnsiblePrivateSshKey'
           ).value }}"
 
@@ -89,7 +89,7 @@
              - systemSudoPassword (plain text password)
              - nexusAnsiblePublicSshKey
              - nexusAnsiblePrivateSshKey
-          3. You have access to the project: {{ infisical_project_id }}
+          3. You have access to the project: {{ vyos_infisical_project_id }}
         success_msg: "Successfully retrieved all required secrets from Infisical"
 
 - name: Build VyOS image if needed

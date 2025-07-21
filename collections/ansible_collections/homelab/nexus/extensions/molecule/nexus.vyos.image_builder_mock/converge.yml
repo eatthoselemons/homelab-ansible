@@ -4,4 +4,4 @@
   tasks:
     - name: Include vyos_image_builder role
       include_role:
-        name: ../../../roles/vyos_image_builder
+        name: homelab.nexus.vyos_image_builder
