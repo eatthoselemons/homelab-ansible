@@ -1,6 +1,13 @@
 ### 🔄 Project Awareness & Context
 - **Always read `docs/llm/design/architecture.md`** at the start of a new conversation to understand the project's architecture, goals, style, and constraints.
-- **Check `TASK.md`** before starting a new task. If the task isn’t listed, add it with a brief description and today's date.
+- **Task Management with `TASK.md`**:
+  - Check if `TASK.md` exists before starting work
+  - If working on a multi-step task, create/update `TASK.md` with:
+    - Task name and date started
+    - List of subtasks to complete
+    - Progress indicators (✅ completed, 🔄 in progress, ⏳ pending)
+  - Update task status as you work
+  - Add a "Discovered During Work" section for new issues found
 - **Use consistent naming conventions, file structure, and architecture patterns** as described in `PLANNING.md`.
 
 ### 🧱 Code Structure & Modularity
@@ -15,8 +22,9 @@
 - **Test verification priority**: Full functionality over speed. Always run complete test cycles to ensure proper validation.
 
 ### ✅ Task Completion
-- **Mark completed tasks in `TASK.md`** immediately after finishing them.
-- Add new sub-tasks or TODOs discovered during development to `TASK.md` under a “Discovered During Work” section.
+- **Update `TASK.md` immediately** when completing tasks (mark with ✅)
+- **Document discovered issues** in the "Discovered During Work" section
+- **Include what was changed** in a brief summary for each completed task
 
 ### 📚 Documentation & Explainability
 - **Update `README.md`** when new features are added, dependencies change, or setup steps are modified.
