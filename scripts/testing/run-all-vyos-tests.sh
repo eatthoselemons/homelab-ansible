@@ -134,9 +134,9 @@ check_vyos_image() {
         local size_mb=$((size / 1024 / 1024))
         print_info "VyOS image found: $image_path (${size_mb}MB)"
         
-        # Check if it's a mock image (exactly 450MB)
+        # Check if it's a test image (exactly 450MB)
         if [ "$size_mb" -eq 450 ]; then
-            print_warning "Detected mock VyOS image"
+            print_warning "Detected test VyOS image (450MB)"
             return 1
         fi
         return 0
