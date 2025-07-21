@@ -103,7 +103,7 @@ run_pattern_tests() {
     
     # Find all tests matching the pattern
     for dir in "$MOLECULE_DIR"/*; do
-        if [ -d "$dir" ] && [ -f "$dir/molecule.yml" ]; then
+        if [ -d "$dir" ] && [ -f "$dir/molecule.yaml" ]; then
             test_name=$(basename "$dir")
             if [[ "$test_name" =~ $pattern ]]; then
                 ((total_tests++))
@@ -311,7 +311,7 @@ case "$COMMAND" in
             echo ""
             local test_count=0
             for dir in "$MOLECULE_DIR"/*; do
-                if [ -d "$dir" ] && [ -f "$dir/molecule.yml" ]; then
+                if [ -d "$dir" ] && [ -f "$dir/molecule.yaml" ]; then
                     test_name=$(basename "$dir")
                     print_test "$test_name"
                     ((test_count++))

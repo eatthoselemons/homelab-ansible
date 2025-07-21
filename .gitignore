@@ -4,6 +4,7 @@ ansible/roles/*
 images/
 *.iso
 .env
+references/*
 
 # Task tracking files (used for PR descriptions)
 docs/humans/tasks/*.md
