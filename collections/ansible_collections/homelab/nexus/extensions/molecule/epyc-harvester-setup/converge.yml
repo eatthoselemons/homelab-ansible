@@ -1,0 +1,45 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: yes
+  become: true
+  collections:
+    - homelab.epyc
+  
+  vars:
+    # Enable test mode to skip actual deployment
+    harvester_test_mode: true
+    
+    # Test node configuration
+    harvester_nodes:
+      - name: "test-harvester-1"
+        ip: "10.60.1.11"
+        is_first: true
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:01"
+        pcie_devices: ["10de:1fb9", "10de:10fa"]
+      - name: "test-harvester-2"
+        ip: "10.60.1.12"
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:02"
+      - name: "test-harvester-3"
+        ip: "10.60.1.13"
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:03"
+    
+    # Test credentials
+    harvester_infisical_client_id: "test-client-id"
+    harvester_infisical_client_secret: "test-client-secret"
+    harvester_infisical_project_id: "test-project-id"
+    
+    # Test paths
+    harvester_kubeconfig_path: "/tmp/test-harvester-kubeconfig"
+    harvester_terraform_test_dir: "/tmp/harvester-terraform-test"
+  
+  tasks:
+    - name: Include harvester_setup role
+      include_role:
+        name: "harvester_setup"

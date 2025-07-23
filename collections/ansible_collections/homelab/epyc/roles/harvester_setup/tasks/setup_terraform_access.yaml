@@ -1,0 +1,239 @@
+---
+- name: Create Terraform test directory
+  file:
+    path: "{{ harvester_terraform_test_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  become: no
+
+- name: Verify kubeconfig exists
+  stat:
+    path: "{{ harvester_kubeconfig_path }}"
+  register: kubeconfig_check
+  delegate_to: localhost
+  become: no
+
+- name: Assert kubeconfig is available
+  assert:
+    that:
+      - harvester_test_mode or kubeconfig_check.stat.exists
+    fail_msg: "Kubeconfig not found at {{ harvester_kubeconfig_path }}"
+    success_msg: "Kubeconfig verified"
+
+- name: Create Terraform provider configuration
+  copy:
+    content: |
+      terraform {
+        required_version = ">= 1.0"
+        required_providers {
+          harvester = {
+            source = "harvester/harvester"
+            version = "{{ harvester_terraform_provider_version }}"
+          }
+        }
+      }
+      
+      provider "harvester" {
+        kubeconfig = "{{ harvester_kubeconfig_path }}"
+      }
+    dest: "{{ harvester_terraform_test_dir }}/versions.tf"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Create example Terraform configuration
+  copy:
+    content: |
+      # Data source to get cluster information
+      data "harvester_clusterinfo" "cluster" {}
+      
+      # Output cluster version
+      output "cluster_version" {
+        value = data.harvester_clusterinfo.cluster.version
+        description = "Harvester cluster version"
+      }
+      
+      # Output cluster state
+      output "cluster_state" {
+        value = data.harvester_clusterinfo.cluster.state
+        description = "Harvester cluster state"
+      }
+      
+      # Example: List all namespaces
+      data "harvester_namespace" "all" {}
+      
+      output "namespaces" {
+        value = data.harvester_namespace.all.namespaces[*].metadata[0].name
+        description = "List of all namespaces"
+      }
+      
+      # Example: Create a new namespace
+      resource "harvester_namespace" "example" {
+        name = "terraform-example"
+        description = "Example namespace created by Terraform"
+        labels = {
+          "managed-by" = "terraform"
+          "environment" = "test"
+        }
+      }
+      
+      # Example: Create an image from URL
+      resource "harvester_image" "ubuntu" {
+        name      = "ubuntu-20.04"
+        namespace = harvester_namespace.example.name
+        
+        display_name = "Ubuntu 20.04"
+        description  = "Ubuntu 20.04 cloud image"
+        source_type  = "download"
+        url          = "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
+        
+        labels = {
+          "os" = "ubuntu"
+          "version" = "20.04"
+        }
+      }
+    dest: "{{ harvester_terraform_test_dir }}/main.tf"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Create VM example configuration
+  copy:
+    content: |
+      # Example: Create a virtual machine
+      resource "harvester_virtualmachine" "example-vm" {
+        name      = "terraform-vm"
+        namespace = harvester_namespace.example.name
+        
+        description = "VM created by Terraform"
+        tags = {
+          "managed-by" = "terraform"
+        }
+        
+        cpu = 2
+        memory = "4Gi"
+        
+        efi         = true
+        secure_boot = false
+        
+        run_strategy = "RerunOnFailure"
+        hostname     = "terraform-vm"
+        
+        disk {
+          name       = "rootdisk"
+          type       = "disk"
+          size       = "20Gi"
+          bus        = "virtio"
+          boot_order = 1
+          
+          image = harvester_image.ubuntu.id
+        }
+        
+        network_interface {
+          name         = "default"
+          type         = "masquerade"
+          model        = "virtio"
+          network_name = "harvester-public/{{ harvester_cluster_name }}-vlan1"
+        }
+        
+        cloudinit {
+          user_data = <<-EOF
+            #cloud-config
+            users:
+              - name: ubuntu
+                sudo: ALL=(ALL) NOPASSWD:ALL
+                shell: /bin/bash
+                ssh_authorized_keys:
+                  - ${file("~/.ssh/id_rsa.pub")}
+            package_update: true
+            packages:
+              - qemu-guest-agent
+          EOF
+        }
+      }
+      
+      output "vm_status" {
+        value = harvester_virtualmachine.example-vm.status
+        description = "VM status"
+      }
+    dest: "{{ harvester_terraform_test_dir }}/vm-example.tf"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Create .gitignore for Terraform
+  copy:
+    content: |
+      # Terraform files
+      *.tfstate
+      *.tfstate.*
+      .terraform/
+      .terraform.lock.hcl
+      terraform.tfvars
+      *.auto.tfvars
+      override.tf
+      override.tf.json
+      *_override.tf
+      *_override.tf.json
+      
+      # Crash log files
+      crash.log
+      crash.*.log
+      
+      # Sensitive files
+      *.pem
+      *.key
+      kubeconfig*
+    dest: "{{ harvester_terraform_test_dir }}/.gitignore"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Initialize Terraform
+  shell: |
+    cd {{ harvester_terraform_test_dir }}
+    terraform init
+  register: tf_init
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Validate Terraform configuration
+  shell: |
+    cd {{ harvester_terraform_test_dir }}
+    terraform validate
+  register: tf_validate
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Create Terraform plan
+  shell: |
+    cd {{ harvester_terraform_test_dir }}
+    terraform plan -input=false
+  register: tf_plan
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+  ignore_errors: yes
+
+- name: Display Terraform setup status
+  debug:
+    msg: |
+      Terraform Setup Complete:
+      - Provider Version: {{ harvester_terraform_provider_version }}
+      - Configuration Directory: {{ harvester_terraform_test_dir }}
+      - Kubeconfig Path: {{ harvester_kubeconfig_path }}
+      - Initialization: {{ 'Success' if (not harvester_test_mode and tf_init.rc == 0) else 'Test Mode/Failed' }}
+      - Validation: {{ 'Success' if (not harvester_test_mode and tf_validate.rc == 0) else 'Test Mode/Failed' }}
+      
+      Available example configurations:
+      - versions.tf: Provider configuration
+      - main.tf: Basic resources and data sources
+      - vm-example.tf: Virtual machine example
+      
+      To use Terraform with this cluster:
+      1. cd {{ harvester_terraform_test_dir }}
+      2. terraform plan
+      3. terraform apply

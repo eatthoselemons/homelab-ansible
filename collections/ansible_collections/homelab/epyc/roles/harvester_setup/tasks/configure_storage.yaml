@@ -1,0 +1,170 @@
+---
+- name: Check if storage network already exists
+  k8s_info:
+    api_version: network.harvesterhci.io/v1beta1
+    kind: ClusterNetwork
+    name: storage
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: existing_storage_network
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Create storage network configuration
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    definition:
+      apiVersion: network.harvesterhci.io/v1beta1
+      kind: ClusterNetwork
+      metadata:
+        name: storage
+      spec:
+        description: "Longhorn storage replication network"
+        enable: true
+  delegate_to: localhost
+  become: no
+  when: 
+    - not harvester_test_mode
+    - existing_storage_network.resources | length == 0
+
+- name: Create VLAN configuration for storage network
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    definition:
+      apiVersion: network.harvesterhci.io/v1beta1
+      kind: VlanConfig
+      metadata:
+        name: storage-vlan
+        namespace: harvester-system
+      spec:
+        clusterNetwork: storage
+        uplink:
+          linkName: eth0  # Primary interface
+          type: native
+        vlanId: {{ harvester_storage_network.vlan }}
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Wait for VLAN configuration to be ready
+  k8s_info:
+    api_version: network.harvesterhci.io/v1beta1
+    kind: VlanConfig
+    name: storage-vlan
+    namespace: harvester-system
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: vlan_config
+  until:
+    - vlan_config.resources | length > 0
+    - vlan_config.resources[0].status is defined
+    - vlan_config.resources[0].status.ready | default(false)
+  retries: 30
+  delay: 10
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Create network attachment definition for storage
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    definition:
+      apiVersion: k8s.cni.cncf.io/v1
+      kind: NetworkAttachmentDefinition
+      metadata:
+        name: storage-network
+        namespace: longhorn-system
+      spec:
+        config: |
+          {
+            "cniVersion": "0.3.1",
+            "name": "storage-network",
+            "type": "bridge",
+            "bridge": "br-storage",
+            "promiscMode": true,
+            "vlan": {{ harvester_storage_network.vlan }},
+            "ipam": {
+              "type": "host-local",
+              "subnet": "{{ harvester_storage_network.cidr }}",
+              "rangeStart": "{{ harvester_storage_network.ip_range_start }}",
+              "rangeEnd": "{{ harvester_storage_network.ip_range_end }}",
+              "routes": [
+                {"dst": "{{ harvester_storage_network.cidr }}"}
+              ]
+            }
+          }
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Configure Longhorn to use storage network
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: longhorn-storageclass
+        namespace: longhorn-system
+      data:
+        storageclass.yaml: |
+          kind: StorageClass
+          apiVersion: storage.k8s.io/v1
+          metadata:
+            name: longhorn-storage-network
+          provisioner: driver.longhorn.io
+          allowVolumeExpansion: true
+          reclaimPolicy: Delete
+          volumeBindingMode: Immediate
+          parameters:
+            numberOfReplicas: "3"
+            staleReplicaTimeout: "2880"
+            fromBackup: ""
+            fsType: "ext4"
+            dataLocality: "disabled"
+            storageNetwork: "longhorn-system/storage-network"
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Apply storage network to existing Longhorn settings
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    merge_type: merge
+    definition:
+      apiVersion: longhorn.io/v1beta2
+      kind: Setting
+      metadata:
+        name: storage-network
+        namespace: longhorn-system
+      value: "longhorn-system/storage-network"
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Verify storage network configuration
+  k8s_info:
+    api_version: k8s.cni.cncf.io/v1
+    kind: NetworkAttachmentDefinition
+    name: storage-network
+    namespace: longhorn-system
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: storage_net_verify
+  delegate_to: localhost
+  become: no
+  when: not harvester_test_mode
+
+- name: Display storage network configuration status
+  debug:
+    msg: |
+      Storage Network Configuration:
+      - Network Name: storage
+      - VLAN ID: {{ harvester_storage_network.vlan }}
+      - CIDR: {{ harvester_storage_network.cidr }}
+      - IP Range: {{ harvester_storage_network.ip_range_start }} - {{ harvester_storage_network.ip_range_end }}
+      - Status: {{ 'Configured' if (not harvester_test_mode and storage_net_verify.resources | length > 0) else 'Test Mode' }}
+      - Longhorn Integration: Enabled

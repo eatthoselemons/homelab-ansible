@@ -1,0 +1,23 @@
+---
+# Test-specific variables for molecule
+
+# Override to use test mode
+harvester_test_mode: true
+
+# Test environment variables
+harvester_infisical_client_id: "test-client-id"
+harvester_infisical_client_secret: "test-client-secret"
+harvester_infisical_project_id: "test-project-id"
+
+# Test paths
+harvester_kubeconfig_path: "/tmp/test-harvester-kubeconfig"
+harvester_terraform_test_dir: "/tmp/harvester-terraform-test"
+
+# Disable features that require real infrastructure
+harvester_configure_networks: true
+harvester_enable_pcie_passthrough: true
+harvester_configure_storage_network: true
+harvester_setup_terraform: true
+
+# Test SSH key
+harvester_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@example.com"
