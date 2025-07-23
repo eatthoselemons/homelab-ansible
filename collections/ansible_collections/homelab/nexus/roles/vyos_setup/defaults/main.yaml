@@ -233,6 +233,48 @@ vyos_vlan_networks:
     dns_servers:
       - "10.70.0.1"
 
+  - name: "storage"
+    vlan_id: 65
+    description: "Storage Network - Harvester Longhorn replication"
+    subnet: "10.60.65.0/24"
+    gateway: "10.60.65.1"
+    domain: "storage.{{ vyos_domain }}"
+    bridge_name: "br-storage"
+    dhcp_enabled: false
+    dns_servers:
+      - "10.60.65.1"
+    firewall_rules:
+      - rule: 5
+        action: "accept"
+        state: 
+          established: true
+          related: true
+        description: "Allow established and related connections"
+      - rule: 10
+        action: "accept"
+        source: "10.60.65.0/24"
+        destination: "10.60.65.0/24"
+        state:
+          new: true
+        description: "Allow new storage replication between nodes"
+      - rule: 20
+        action: "accept"
+        source: "10.60.0.0/16"
+        destination: "10.60.65.0/24"
+        state:
+          new: true
+        description: "Allow management to initiate connections to storage"
+      - rule: 30
+        action: "drop"
+        source: "10.60.65.0/24"
+        destination: "0.0.0.0/0"
+        description: "Block storage from initiating Internet connections"
+      - rule: 40
+        action: "drop"
+        source: "10.60.65.0/24"
+        destination: "10.0.0.0/8"
+        description: "Block storage from initiating connections to other VLANs"
+
 # DNS Configuration
 vyos_dns_servers:
   - "1.1.1.1"
