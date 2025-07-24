@@ -8,7 +8,6 @@
   register: existing_storage_network
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Create storage network configuration
   k8s:
@@ -25,7 +24,6 @@
   delegate_to: localhost
   become: no
   when: 
-    - not harvester_test_mode
     - existing_storage_network.resources | length == 0
 
 - name: Create VLAN configuration for storage network
@@ -46,7 +44,6 @@
         vlanId: "{{ harvester_storage_network.vlan }}"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Wait for VLAN configuration to be ready
   k8s_info:
@@ -64,7 +61,6 @@
   delay: 10
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Create network attachment definition for storage
   k8s:
@@ -97,7 +93,6 @@
           }
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Configure Longhorn to use storage network
   k8s:
@@ -128,7 +123,6 @@
             storageNetwork: "longhorn-system/storage-network"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Apply storage network to existing Longhorn settings
   k8s:
@@ -144,7 +138,6 @@
       value: "longhorn-system/storage-network"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Verify storage network configuration
   k8s_info:
@@ -156,7 +149,6 @@
   register: storage_net_verify
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Display storage network configuration status
   debug:
@@ -166,5 +158,5 @@
       - VLAN ID: {{ harvester_storage_network.vlan }}
       - CIDR: {{ harvester_storage_network.cidr }}
       - IP Range: {{ harvester_storage_network.ip_range_start }} - {{ harvester_storage_network.ip_range_end }}
-      - Status: {{ 'Configured' if (not harvester_test_mode and storage_net_verify.resources | length > 0) else 'Test Mode' }}
+      - Status: {{ 'Configured' if storage_net_verify.resources | length > 0 else 'Not Configured' }}
       - Longhorn Integration: Enabled

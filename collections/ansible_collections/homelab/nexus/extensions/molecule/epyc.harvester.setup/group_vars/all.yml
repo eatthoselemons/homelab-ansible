@@ -2,7 +2,6 @@
 # Test-specific variables for molecule
 
 # Override to use test mode
-harvester_test_mode: true
 
 # Test environment variables
 harvester_infisical_client_id: "test-client-id"

@@ -191,7 +191,6 @@
             name: harvester_setup
             tasks_from: configure_networks
           vars:
-            harvester_test_mode: true  # Only for config generation
         
         - name: Verify network configs were generated
           stat:
@@ -254,14 +253,13 @@
           set_fact:
             # In Docker: Use test mode
             # On bare metal: Use real deployment with cached images
-            harvester_test_mode: "{{ docker_check.stat.exists }}"
             use_cached_images: "{{ not docker_check.stat.exists }}"
         
         - name: Display deployment mode
           debug:
             msg: |
-              Deployment mode: {{ 'Docker (test mode)' if harvester_test_mode else 'Bare metal (cached images)' }}
-              This is: {{ 'simulated deployment' if harvester_test_mode else 'real deployment' }}
+              Deployment mode: {{ 'Docker container' if docker_check.stat.exists else 'Bare metal (cached images)' }}
+              Environment type: {{ 'Container with nested virtualization' if docker_check.stat.exists else 'Physical/VM host' }}
         
         # Run the full role
         - name: Execute complete Harvester setup
@@ -269,7 +267,6 @@
             name: harvester_setup
           vars:
             # Override test mode based on environment
-            harvester_test_mode: "{{ harvester_test_mode }}"
         
         # Verify deployment
         - name: Verify deployment success markers
@@ -298,7 +295,7 @@
               Component: {{ component_under_test }}
               Start Time: {{ test_start_time }}
               End Time: {{ ansible_date_time.iso8601 }}
-              Environment: {{ 'Docker (simulated)' if harvester_test_mode else 'Bare metal (real)' }}
+              Environment: {{ 'Docker container' if docker_check.stat.exists else 'Bare metal' }}
               
               All 4 phases passed:
               ✓ Phase 1: Syntax and Variable Validation

@@ -37,7 +37,27 @@ This strategy addresses common LLM testing anti-patterns and ensures comprehensi
 ```yaml
 # Bad: Optional stages that can be skipped
 when: test_stage == 'full' or run_all_tests
+
+# Bad: Test mode flags that skip real functionality
+when: not harvester_test_mode
+
+# Bad: Different behavior for test vs production
+if harvester_test_mode:
+  mock_deployment()
+else:
+  real_deployment()
 ```
+
+### ❌ NEVER Add Test Mode Variables:
+
+**DO NOT create variables like:**
+- `test_mode`
+- `mock_mode` 
+- `dry_run` (except for config generation)
+- `skip_deployment`
+- `validation_only`
+
+**Why:** These create a divergence between test and production behavior. Tests should execute the SAME code that runs in production, just in a controlled environment.
 
 ## Correct Testing Pattern
 
@@ -134,6 +154,57 @@ All tests MUST follow this structure in `converge.yml`:
           Phase 4: Deployment     ✓
           
           This confirms the role will work in production.
+```
+
+## Test Infrastructure Requirements
+
+### Use Real Infrastructure in Tests
+
+Instead of test mode flags, provide proper test infrastructure:
+
+1. **For VM-based tests**: 
+   - Use nested virtualization in containers
+   - Mount `/dev/kvm` for hardware acceleration
+   - Create real VMs with cached base images
+
+2. **For network tests**:
+   - Use Docker networks or network namespaces
+   - Create real bridges and VLANs
+   - Test actual packet flow
+
+3. **For storage tests**:
+   - Use loop devices or tmpfs
+   - Create real filesystems
+   - Test actual I/O operations
+
+4. **For API tests**:
+   - Run real services in containers
+   - Use actual authentication
+   - Test real API endpoints
+
+### Example: Proper Test Setup
+
+```yaml
+# molecule.yml - Provide real infrastructure
+platforms:
+  - name: test-node
+    image: ubuntu:24.04
+    privileged: true
+    volumes:
+      - /dev/kvm:/dev/kvm  # Real virtualization
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    capabilities:
+      - SYS_ADMIN
+      - NET_ADMIN  # Real networking
+
+# converge.yml - Use real operations
+- name: Create real VM for testing
+  community.libvirt.virt:
+    name: test-vm
+    state: running
+    memory: 2048
+    vcpus: 2
+    disk_source: "{{ cached_base_image }}"
 ```
 
 ## Image Building and Caching

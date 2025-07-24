@@ -22,7 +22,6 @@
 - name: Display configuration (test mode)
   debug:
     msg: "Would apply initial Harvester configuration to {{ harvester_nodes[0].name }}"
-  when: harvester_test_mode
 
 - name: Copy configuration to first node
   copy:
@@ -33,7 +32,6 @@
     group: root
   delegate_to: "{{ harvester_nodes[0].ip }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Display reboot warning
   debug:
@@ -41,7 +39,6 @@
       WARNING: First node will be rebooted to apply Harvester configuration.
       This will install Harvester and initialize the cluster.
       The process may take 10-15 minutes.
-  when: not harvester_test_mode
 
 - name: Reboot first node to apply configuration
   reboot:
@@ -51,7 +48,6 @@
     post_reboot_delay: 30
   delegate_to: "{{ harvester_nodes[0].ip }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Wait for SSH to become available again
   wait_for:
@@ -61,7 +57,6 @@
     timeout: 600
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Wait for Harvester API to become available
   uri:
@@ -76,7 +71,6 @@
   delay: 10
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Wait for Harvester API authentication endpoint
   uri:
@@ -91,7 +85,6 @@
   delay: 10
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Retrieve kubeconfig from Harvester
   uri:
@@ -112,7 +105,6 @@
   delay: 10
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Save kubeconfig locally
   copy:
@@ -122,7 +114,6 @@
   delegate_to: localhost
   become: no
   when: 
-    - not harvester_test_mode
     - kubeconfig_response is defined
     - kubeconfig_response.json is defined
 
@@ -134,7 +125,6 @@
   register: cluster_nodes
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Display cluster initialization status
   debug:
@@ -144,7 +134,7 @@
       - Cluster VIP: {{ harvester_cluster_vip }}
       - API Status: Healthy
       - Kubeconfig: {{ harvester_kubeconfig_path }}
-      - Initial nodes: {{ cluster_nodes.resources | length if not harvester_test_mode else 'N/A (test mode)' }}
+      - Initial nodes: {{ cluster_nodes.resources | length | default(0) }}
 
 - name: Clean up temporary config files
   shell: rm -f /tmp/harvester-configs/*.yaml

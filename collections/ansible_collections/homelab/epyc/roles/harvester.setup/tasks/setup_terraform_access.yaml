@@ -17,7 +17,7 @@
 - name: Assert kubeconfig is available
   assert:
     that:
-      - harvester_test_mode or kubeconfig_check.stat.exists
+      - kubeconfig_check.stat.exists
     fail_msg: "Kubeconfig not found at {{ harvester_kubeconfig_path }}"
     success_msg: "Kubeconfig verified"
 
@@ -197,7 +197,6 @@
   register: tf_init
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Validate Terraform configuration
   shell: |
@@ -206,7 +205,6 @@
   register: tf_validate
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Create Terraform plan
   shell: |
@@ -215,7 +213,6 @@
   register: tf_plan
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
   ignore_errors: yes
 
 - name: Display Terraform setup status
@@ -225,8 +222,8 @@
       - Provider Version: {{ harvester_terraform_provider_version }}
       - Configuration Directory: {{ harvester_terraform_test_dir }}
       - Kubeconfig Path: {{ harvester_kubeconfig_path }}
-      - Initialization: {{ 'Success' if (not harvester_test_mode and tf_init.rc == 0) else 'Test Mode/Failed' }}
-      - Validation: {{ 'Success' if (not harvester_test_mode and tf_validate.rc == 0) else 'Test Mode/Failed' }}
+      - Initialization: {{ 'Success' if tf_init.rc == 0 else 'Failed' }}
+      - Validation: {{ 'Success' if tf_validate.rc == 0 else 'Failed' }}
       
       Available example configurations:
       - versions.tf: Provider configuration

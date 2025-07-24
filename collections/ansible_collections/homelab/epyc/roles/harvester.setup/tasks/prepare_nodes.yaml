@@ -16,7 +16,6 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Backup current GRUB configuration
   copy:
@@ -28,7 +27,6 @@
   loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | list }}"
   become: yes
   when: 
-    - not harvester_test_mode
     - item.pcie_devices is defined and item.pcie_devices | length > 0
 
 - name: Update GRUB configuration for IOMMU and PCIe passthrough
@@ -41,7 +39,6 @@
   loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | list }}"
   become: yes
   when: 
-    - not harvester_test_mode
     - item.pcie_devices is defined and item.pcie_devices | length > 0
   notify: update grub
 
@@ -54,7 +51,6 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes | rejectattr('pcie_devices', 'defined') | list }}"
   become: yes
-  when: not harvester_test_mode
   notify: update grub
 
 - name: Apply GRUB changes
@@ -62,7 +58,6 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Set up sysctl parameters for Harvester
   copy:
@@ -86,14 +81,12 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Apply sysctl parameters
   command: sysctl -p /etc/sysctl.d/99-harvester.conf
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Enable required kernel modules
   modprobe:
@@ -110,7 +103,6 @@
   loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | list }}"
   become: yes
   when: 
-    - not harvester_test_mode
     - item.pcie_devices is defined and item.pcie_devices | length > 0
 
 - name: Ensure kernel modules load on boot
@@ -126,7 +118,6 @@
   loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | list }}"
   become: yes
   when: 
-    - not harvester_test_mode
     - item.pcie_devices is defined and item.pcie_devices | length > 0
 
 - name: Verify node preparation

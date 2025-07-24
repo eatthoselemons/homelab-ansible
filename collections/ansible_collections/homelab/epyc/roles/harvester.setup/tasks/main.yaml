@@ -28,7 +28,6 @@
 
 # Retrieve secrets from Infisical
 - name: Retrieve Harvester secrets from Infisical
-  when: not harvester_test_mode
   block:
     - name: Get cluster token from Infisical
       set_fact:
@@ -101,7 +100,6 @@
 
 # Set test values if in test mode
 - name: Set test values
-  when: harvester_test_mode
   block:
     - name: Set test cluster token
       set_fact:

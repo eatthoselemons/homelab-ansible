@@ -208,10 +208,6 @@ harvester_enable_pcie_passthrough: true
 harvester_configure_storage_network: true
 harvester_setup_terraform: true
 
-# Test Mode
-harvester_test_mode: false
-```
-
 ### Task Implementation
 
 #### Task 1: Main Orchestration (tasks/main.yaml)
@@ -228,7 +224,6 @@ harvester_test_mode: false
 
 # Retrieve secrets
 - name: Retrieve Harvester secrets from Infisical
-  when: not harvester_test_mode
   block:
     - name: Get cluster token
       set_fact:

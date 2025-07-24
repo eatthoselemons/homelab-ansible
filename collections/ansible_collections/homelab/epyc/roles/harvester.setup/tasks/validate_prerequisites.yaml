@@ -8,12 +8,11 @@
   become: no
   ignore_errors: yes
   register: vlan_check
-  when: not harvester_test_mode
 
 - name: Verify VLAN 65 is configured
   assert:
     that:
-      - harvester_test_mode or vlan_check is succeeded
+      - vlan_check is succeeded
     fail_msg: "VLAN 65 not accessible. Run harvester-infrastructure-prerequisites.md first."
     success_msg: "VLAN 65 connectivity verified"
 
@@ -27,12 +26,11 @@
   become: no
   ignore_errors: yes
   register: ntp_check
-  when: not harvester_test_mode
 
 - name: Verify NTP server is available
   assert:
     that:
-      - harvester_test_mode or ntp_check is succeeded
+      - ntp_check is succeeded
     fail_msg: "NTP server not accessible. Ensure NTP server is running on Nexus VM."
     success_msg: "NTP server connectivity verified"
 
@@ -44,7 +42,6 @@
   loop: "{{ harvester_nodes }}"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Gather hardware facts from nodes
   setup:
@@ -53,16 +50,15 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   register: node_facts
-  when: not harvester_test_mode
 
 - name: Verify hardware requirements
   assert:
     that:
-      - harvester_test_mode or (item.ansible_facts.ansible_memtotal_mb >= 32768)  # 32GB minimum
+      - item.ansible_facts.ansible_memtotal_mb >= 32768  # 32GB minimum
     fail_msg: "Node {{ item.item.name }} has insufficient memory. Found: {{ item.ansible_facts.ansible_memtotal_mb | default('unknown') }}MB, Required: 32768MB minimum"
     success_msg: "Node {{ item.item.name }} meets memory requirements"
   loop: "{{ node_facts.results | default([]) }}"
-  when: not harvester_test_mode
+  when: node_facts is defined
 
 - name: Check IOMMU enabled on nodes with PCIe devices
   shell: |
@@ -71,17 +67,15 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | list }}"
   failed_when: false
-  when: not harvester_test_mode
 
 - name: Verify IOMMU is enabled for passthrough nodes
   assert:
     that:
-      - harvester_test_mode or "enabled" in item.stdout
+      - "enabled" in item.stdout
     fail_msg: "IOMMU not enabled on {{ item.item.name }}. Enable IOMMU in BIOS/UEFI settings."
     success_msg: "IOMMU enabled on {{ item.item.name }}"
   loop: "{{ iommu_check.results | default([]) }}"
   when: 
-    - not harvester_test_mode
     - item.item.pcie_devices is defined
 
 - name: Check disk availability
@@ -90,23 +84,21 @@
   register: disk_check
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
-  when: not harvester_test_mode
 
 - name: Verify installation disk exists
   assert:
     that:
-      - harvester_test_mode or disk_check.results | length > 0
+      - disk_check.results | length > 0
     fail_msg: "No suitable installation disk found on nodes"
     success_msg: "Installation disks verified on all nodes"
-  when: not harvester_test_mode
 
 - name: Display prerequisite validation summary
   debug:
     msg: |
       Prerequisite Validation Summary:
-      - VLAN 65 Connectivity: {{ 'PASSED' if (harvester_test_mode or vlan_check is succeeded) else 'FAILED' }}
-      - NTP Server Connectivity: {{ 'PASSED' if (harvester_test_mode or ntp_check is succeeded) else 'FAILED' }}
+      - VLAN 65 Connectivity: {{ 'PASSED' if vlan_check is succeeded else 'FAILED' }}
+      - NTP Server Connectivity: {{ 'PASSED' if ntp_check is succeeded else 'FAILED' }}
       - Node Connectivity: PASSED
       - Hardware Requirements: PASSED
-      - IOMMU Status: {{ 'PASSED' if harvester_test_mode else 'CHECK MANUALLY FOR PASSTHROUGH NODES' }}
+      - IOMMU Status: {{ 'PASSED' if (iommu_check.results | selectattr('stdout', 'search', 'enabled') | list | length > 0) else 'CHECK REQUIRED' }}
       - Installation Disks: PASSED

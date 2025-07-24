@@ -9,7 +9,6 @@
   register: pcidevices_addon
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Enable pcidevices addon
   k8s:
@@ -37,7 +36,6 @@
   delegate_to: localhost
   become: no
   when: 
-    - not harvester_test_mode
     - pcidevices_addon.resources | length == 0 or not pcidevices_addon.resources[0].spec.enabled | default(false)
 
 - name: Wait for PCIDevice CRDs to be created
@@ -52,7 +50,6 @@
   delay: 10
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Wait for PCIDeviceClaim CRDs to be created
   k8s_info:
@@ -66,12 +63,10 @@
   delay: 10
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Wait for pcidevices controller to scan devices
   pause:
     seconds: 30
-  when: not harvester_test_mode
 
 - name: List available PCI devices
   k8s_info:
@@ -81,20 +76,18 @@
   register: pci_devices
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Filter GPU devices
   set_fact:
     gpu_devices: "{{ pci_devices.resources | selectattr('spec.vendorId', 'equalto', '10de') | list }}"
   when: 
-    - not harvester_test_mode
     - pci_devices.resources is defined
 
 - name: Display available GPU devices
   debug:
     msg: |
       Available GPU PCI Devices:
-      {% if not harvester_test_mode and gpu_devices is defined %}
+      {% if gpu_devices is defined %}
       {% for device in gpu_devices %}
       - Name: {{ device.metadata.name }}
         Node: {{ device.spec.nodeName }}
@@ -125,7 +118,6 @@
   delegate_to: localhost
   become: no
   when: 
-    - not harvester_test_mode
     - gpu_devices is defined
     - gpu_devices | length > 0
 
@@ -138,7 +130,6 @@
   register: pci_claims
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Label nodes with passthrough capability
   k8s:
@@ -156,7 +147,6 @@
   loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | map(attribute='name') | list }}"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Create example VM with GPU passthrough manifest
   copy:
@@ -203,8 +193,8 @@
     msg: |
       PCIe Passthrough Configuration:
       - Addon Status: Enabled
-      - Available GPU Devices: {{ gpu_devices | length if (not harvester_test_mode and gpu_devices is defined) else 'N/A' }}
-      - PCIDevice Claims: {{ pci_claims.resources | length if (not harvester_test_mode and pci_claims is defined) else 'N/A' }}
+      - Available GPU Devices: {{ gpu_devices | length if gpu_devices is defined else 0 }}
+      - PCIDevice Claims: {{ pci_claims.resources | length if pci_claims is defined else 0 }}
       - Example VM manifest: /tmp/gpu-vm-example.yaml
       
       Note: VMs with PCIe passthrough cannot be live migrated.

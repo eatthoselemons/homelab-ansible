@@ -87,10 +87,6 @@ harvester_enable_pcie_passthrough: true
 harvester_configure_storage_network: true
 harvester_setup_terraform: true
 
-# Test mode (skips actual deployment)
-harvester_test_mode: false
-```
-
 ## Dependencies
 
 None

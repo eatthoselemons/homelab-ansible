@@ -24,7 +24,6 @@
   debug:
     msg: "Would apply join configuration to {{ item.name }}"
   loop: "{{ harvester_nodes[1:] }}"
-  when: harvester_test_mode
 
 - name: Copy join configuration to nodes
   copy:
@@ -36,7 +35,6 @@
   loop: "{{ harvester_nodes[1:] }}"
   delegate_to: "{{ item.ip }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Display join warning
   debug:
@@ -44,7 +42,6 @@
       WARNING: Nodes will be rebooted to join the Harvester cluster.
       Nodes to be joined: {{ harvester_nodes[1:] | map(attribute='name') | join(', ') }}
       This process may take 10-15 minutes per node.
-  when: not harvester_test_mode
 
 - name: Reboot nodes to join cluster
   reboot:
@@ -55,7 +52,6 @@
   loop: "{{ harvester_nodes[1:] }}"
   delegate_to: "{{ item.ip }}"
   become: yes
-  when: not harvester_test_mode
   throttle: 1  # Join one node at a time
 
 - name: Wait for SSH to become available on joined nodes
@@ -67,7 +63,6 @@
   loop: "{{ harvester_nodes[1:] }}"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Verify node joined the cluster
   k8s_info:
@@ -84,7 +79,6 @@
   loop: "{{ harvester_nodes[1:] }}"
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Wait for all nodes to be ready
   k8s_info:
@@ -99,7 +93,6 @@
   delay: 20
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Verify cluster management node count
   k8s_info:
@@ -111,21 +104,19 @@
   register: management_nodes
   delegate_to: localhost
   become: no
-  when: not harvester_test_mode
 
 - name: Display cluster join status
   debug:
     msg: |
       Cluster Join Complete:
-      - Total nodes: {{ all_nodes.resources | length if not harvester_test_mode else harvester_nodes | length }}
-      - Management nodes: {{ management_nodes.resources | length if not harvester_test_mode else 3 }}
+      - Total nodes: {{ all_nodes.resources | length | default(harvester_nodes | length) }}
+      - Management nodes: {{ management_nodes.resources | length | default(3) }}
       - All nodes status: Ready
-      {% if not harvester_test_mode %}
+      
       Node details:
       {% for node in all_nodes.resources %}
       - {{ node.metadata.name }}: {{ node.status.addresses | selectattr('type', 'equalto', 'InternalIP') | map(attribute='address') | first }}
       {% endfor %}
-      {% endif %}
 
 - name: Clean up temporary join config files
   shell: rm -f /tmp/harvester-join-configs/*.yaml

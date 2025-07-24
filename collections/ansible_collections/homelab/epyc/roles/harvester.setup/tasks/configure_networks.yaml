@@ -21,7 +21,6 @@
   debug:
     msg: "Network configuration would be applied to {{ item.name }}"
   loop: "{{ harvester_nodes }}"
-  when: harvester_test_mode
 
 - name: Create OEM directory on nodes
   file:
@@ -31,7 +30,6 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Apply network configuration to nodes
   copy:
@@ -43,7 +41,6 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
-  when: not harvester_test_mode
 
 - name: Verify network configuration files
   stat:
@@ -52,16 +49,14 @@
   loop: "{{ harvester_nodes }}"
   become: yes
   register: network_config_check
-  when: not harvester_test_mode
 
 - name: Assert network configurations are in place
   assert:
     that:
-      - harvester_test_mode or (item.stat.exists and item.stat.size > 0)
+      - (item.stat.exists and item.stat.size > 0)
     fail_msg: "Network configuration missing on {{ item.item.name }}"
     success_msg: "Network configuration applied to {{ item.item.name }}"
   loop: "{{ network_config_check.results | default([]) }}"
-  when: not harvester_test_mode
 
 - name: Clean up temporary network config files
   shell: rm -f /tmp/harvester-network-configs/*.yaml
