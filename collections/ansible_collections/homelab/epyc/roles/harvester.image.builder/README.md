@@ -89,7 +89,7 @@ The harvester_setup role can use these base images to:
 
 ## License
 
-MIT
+Apache 2
 
 ## Author Information
 

@@ -59,4 +59,4 @@ ntpdate -q your-ntp-server
 
 ## License
 
-MIT
+Apache 2

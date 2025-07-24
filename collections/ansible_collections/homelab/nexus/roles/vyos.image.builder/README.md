@@ -138,7 +138,7 @@ The role creates:
 
 ## License
 
-MIT
+Apache 2
 
 ## Author Information
 

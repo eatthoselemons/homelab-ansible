@@ -156,7 +156,7 @@ molecule test -s nexus.vyos.full_integration
 
 ## License
 
-MIT
+Apache 2
 
 ## Author Information
 
