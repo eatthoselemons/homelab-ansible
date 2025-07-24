@@ -37,7 +37,7 @@ ERROR: pip's dependency resolver does not currently take into account all the pa
 ERROR! the role 'homelab.epyc.harvester_setup' was not found
 ```
 
-**Resolution**: Added collections_paths to molecule.yml configuration:
+**Resolution**: Added collections_paths to molecule.yaml configuration:
 ```yaml
 provisioner:
   name: ansible
@@ -230,7 +230,7 @@ vlanId: "{{ harvester_storage_network.vlan }}"
 
 ### 11. Verify Test Expectations
 
-**Issue**: The verify.yml test expected Terraform configuration files to exist, but they were created in a directory that gets cleaned up.
+**Issue**: The verify.yaml test expected Terraform configuration files to exist, but they were created in a directory that gets cleaned up.
 
 **Error**:
 ```
@@ -257,4 +257,4 @@ The role is ready for production use with minor adjustments to the verify test f
 - Deploy to actual Harvester hardware for integration testing
 - Add integration tests with actual Harvester API when available
 - Consider adding more comprehensive error scenarios to tests
-- Fine-tune the verify.yml for different test environments
+- Fine-tune the verify.yaml for different test environments

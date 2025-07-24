@@ -25,20 +25,20 @@
         - "allow 10.60.0.0/16"
         - "allow 10.50.0.0/16"
 
-    - name: Verify docker-compose.yml exists
+    - name: Verify docker-compose.yaml exists
       ansible.builtin.stat:
-        path: /opt/chrony/docker-compose.yml
+        path: /opt/chrony/docker-compose.yaml
       register: compose_file
 
-    - name: Assert docker-compose.yml exists
+    - name: Assert docker-compose.yaml exists
       ansible.builtin.assert:
         that:
           - compose_file.stat.exists
-        fail_msg: "docker-compose.yml was not created"
+        fail_msg: "docker-compose.yaml was not created"
 
     - name: Check container image in docker-compose
       ansible.builtin.lineinfile:
-        path: /opt/chrony/docker-compose.yml
+        path: /opt/chrony/docker-compose.yaml
         regexp: '.*image:.*11notes/chrony:4.7.*'
         state: present
       check_mode: yes

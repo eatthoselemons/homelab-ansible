@@ -63,7 +63,7 @@ else:
 
 ### ✅ Single Test Path with Built-in Phases
 
-All tests MUST follow this structure in `converge.yml`:
+All tests MUST follow this structure in `converge.yaml`:
 
 ```yaml
 ---
@@ -185,7 +185,7 @@ Instead of test mode flags, provide proper test infrastructure:
 ### Example: Proper Test Setup
 
 ```yaml
-# molecule.yml - Provide real infrastructure
+# molecule.yaml - Provide real infrastructure
 platforms:
   - name: test-node
     image: ubuntu:24.04
@@ -197,7 +197,7 @@ platforms:
       - SYS_ADMIN
       - NET_ADMIN  # Real networking
 
-# converge.yml - Use real operations
+# converge.yaml - Use real operations
 - name: Create real VM for testing
   community.libvirt.virt:
     name: test-vm

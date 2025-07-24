@@ -1,5 +1,5 @@
 ---
-# Verification is built into converge.yml following universal testing strategy
+# Verification is built into converge.yaml following universal testing strategy
 # This file exists only for molecule compatibility
 
 - name: Verify
@@ -35,7 +35,7 @@
         fail_msg: |
           ❌ TEST DID NOT COMPLETE SUCCESSFULLY
           
-          The converge.yml test must complete all 4 phases.
+          The converge.yaml test must complete all 4 phases.
           Check the test output for failures.
         success_msg: |
           ✅ Test verification passed

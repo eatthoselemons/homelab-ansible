@@ -139,10 +139,10 @@ collections/ansible_collections/homelab/epyc/
 
 collections/ansible_collections/homelab/epyc/extensions/molecule/
 └── harvester-setup/
-    ├── molecule.yml
-    ├── prepare.yml
-    ├── converge.yml
-    ├── verify.yml
+    ├── molecule.yaml
+    ├── prepare.yaml
+    ├── converge.yaml
+    ├── verify.yaml
     └── mock_scripts/
         ├── mock_harvester_api.py
         └── mock_kubectl.sh

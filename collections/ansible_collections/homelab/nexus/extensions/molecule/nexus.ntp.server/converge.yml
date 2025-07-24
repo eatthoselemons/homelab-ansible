@@ -16,7 +16,7 @@
         ansible_check_mode: no
 
     # Override the container start task
-    - name: Create docker-compose.yml for testing (no actual start)
+    - name: Create docker-compose.yaml for testing (no actual start)
       ansible.builtin.copy:
         content: "# Docker compose file created for testing"
         dest: "{{ ntp_config_path }}/docker-compose-test-marker"

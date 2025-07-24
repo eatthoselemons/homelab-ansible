@@ -85,17 +85,17 @@ collections/ansible_collections/homelab/nexus/roles/
     ├── tasks/
     │   └── main.yaml         # Container deployment tasks
     ├── templates/
-    │   ├── docker-compose.yml.j2
+    │   ├── docker-compose.yaml.j2
     │   └── chrony.conf.j2
     └── handlers/
         └── main.yaml         # Container restart handler
 
 collections/ansible_collections/homelab/nexus/extensions/molecule/
 └── ntp-server/
-    ├── molecule.yml
-    ├── prepare.yml
-    ├── converge.yml
-    └── verify.yml
+    ├── molecule.yaml
+    ├── prepare.yaml
+    ├── converge.yaml
+    └── verify.yaml
 ```
 
 ## Implementation Blueprint
@@ -190,8 +190,8 @@ ntp_allowed_networks:
 
 - name: Deploy chrony container via docker-compose
   template:
-    src: docker-compose.yml.j2
-    dest: "{{ ntp_config_path }}/docker-compose.yml"
+    src: docker-compose.yaml.j2
+    dest: "{{ ntp_config_path }}/docker-compose.yaml"
     mode: '0644'
   notify: restart ntp container
 
@@ -222,7 +222,7 @@ allow {{ network }}
 clientloglimit 268435456
 ```
 
-docker-compose.yml.j2:
+docker-compose.yaml.j2:
 ```yaml
 ---
 version: '3.8'
@@ -253,7 +253,7 @@ handlers/main.yaml:
 ```
 
 ### Task 7: Create Molecule Tests for NTP Server
-CREATE molecule/ntp-server/molecule.yml:
+CREATE molecule/ntp-server/molecule.yaml:
 ```yaml
 ---
 dependency:
@@ -271,13 +271,13 @@ platforms:
 provisioner:
   name: ansible
   playbooks:
-    converge: ${MOLECULE_PLAYBOOK:-converge.yml}
+    converge: ${MOLECULE_PLAYBOOK:-converge.yaml}
 verifier:
   name: ansible
 ```
 
 ### Task 8: Create NTP Test Files
-prepare.yml:
+prepare.yaml:
 ```yaml
 ---
 - name: Prepare
@@ -300,7 +300,7 @@ prepare.yml:
       become: yes
 ```
 
-converge.yml:
+converge.yaml:
 ```yaml
 ---
 - name: Converge
@@ -310,7 +310,7 @@ converge.yml:
     - role: homelab.nexus.ntp.server
 ```
 
-verify.yml:
+verify.yaml:
 ```yaml
 ---
 - name: Verify
@@ -339,20 +339,20 @@ verify.yml:
         - "allow 10.60.0.0/16"
         - "allow 10.50.0.0/16"
 
-    - name: Verify docker-compose.yml exists
+    - name: Verify docker-compose.yaml exists
       stat:
-        path: /opt/chrony/docker-compose.yml
+        path: /opt/chrony/docker-compose.yaml
       register: compose_file
 
-    - name: Assert docker-compose.yml exists
+    - name: Assert docker-compose.yaml exists
       assert:
         that:
           - compose_file.stat.exists
-        fail_msg: "docker-compose.yml was not created"
+        fail_msg: "docker-compose.yaml was not created"
 
     - name: Check container image in docker-compose
       lineinfile:
-        path: /opt/chrony/docker-compose.yml
+        path: /opt/chrony/docker-compose.yaml
         regexp: '.*image:.*11notes/chrony:4.7.*'
         state: present
       check_mode: yes
@@ -390,7 +390,7 @@ ntpdate -q nexus.management.domain
 - [ ] NTP server role created with all files
 - [ ] Molecule tests pass for NTP server
 - [ ] chrony.conf properly templated
-- [ ] docker-compose.yml uses 11notes/chrony:4.7
+- [ ] docker-compose.yaml uses 11notes/chrony:4.7
 - [ ] Container runs with read-only filesystem
 - [ ] Firewall rules use stateful tracking
 - [ ] Documentation updated

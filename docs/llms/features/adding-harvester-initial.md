@@ -37,3 +37,4 @@ harvester will be deployed on epyc server, mid server, and one of the hp thin cl
 
 truenas has its own hba
 
+always use `.yaml` file extensions like the yaml faq recommends
