@@ -1,0 +1,16 @@
+---
+version: '3.8'
+services:
+  {{ ntp_container_name }}:
+    image: "{{ ntp_container_image }}"
+    container_name: "{{ ntp_container_name }}"
+    read_only: true
+    restart: unless-stopped
+    environment:
+      TZ: "{{ ntp_timezone }}"
+    volumes:
+      - "{{ ntp_config_path }}/etc:/chrony/etc:ro"
+    ports:
+      - "123:123/udp"
+    tmpfs:
+      - /run/chrony:size=10M,mode=1750,uid=1000,gid=1000

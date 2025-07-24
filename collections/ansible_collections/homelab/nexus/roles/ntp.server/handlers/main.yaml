@@ -1,0 +1,7 @@
+---
+- name: restart ntp container
+  community.docker.docker_compose_v2:
+    project_src: "{{ ntp_config_path }}"
+    recreate: always
+    state: present
+  when: not (molecule_test | default(false))

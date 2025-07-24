@@ -1,0 +1,81 @@
+---
+- name: Build Harvester base images for testing
+  hosts: localhost
+  gather_facts: yes
+  become: no
+  
+  vars:
+    harvester_images_dir: "{{ playbook_dir }}/images/harvester"
+    harvester_version: "v1.3.2"
+    
+  pre_tasks:
+    - name: Check system requirements
+      block:
+        - name: Verify KVM is available
+          stat:
+            path: /dev/kvm
+          register: kvm_device
+          failed_when: not kvm_device.stat.exists
+          
+        - name: Check for required tools
+          command: "which {{ item }}"
+          loop:
+            - qemu-img
+            - genisoimage
+            - wget
+          changed_when: false
+          
+        - name: Ensure libvirt is running
+          systemd:
+            name: libvirtd
+            state: started
+          become: yes
+          
+    - name: Display build information
+      debug:
+        msg: |
+          Harvester Image Builder
+          ======================
+          Version: {{ harvester_version }}
+          Images Directory: {{ harvester_images_dir }}
+          
+          This will build base images for:
+          - EPYC server (16GB RAM, 200GB disk)
+          - Mid server (8GB RAM, 150GB disk)  
+          - Thin client (4GB RAM, 100GB disk)
+          
+          First run will take ~45 minutes.
+          Subsequent runs will skip if images exist.
+  
+  tasks:
+    - name: Build Harvester base images
+      include_role:
+        name: homelab.epyc.harvester_image_builder
+      vars:
+        # Force rebuild if requested
+        harvester_force_rebuild: "{{ force_rebuild | default(false) }}"
+        
+    - name: Display results
+      block:
+        - name: List created images
+          find:
+            paths: "{{ harvester_images_dir }}"
+            patterns: "*.qcow2"
+          register: images
+          
+        - name: Show image details
+          debug:
+            msg: |
+              Build Complete!
+              
+              Created images:
+              {% for image in images.files %}
+              - {{ image.path | basename }}: {{ (image.size / 1024 / 1024 / 1024) | round(2) }}GB
+              {% endfor %}
+              
+              To use these images in tests:
+              1. Run molecule tests on bare metal (not in Docker)
+              2. Set use_cached_images: true in your test
+              
+              To force rebuild:
+              ansible-playbook build-harvester-images.yaml -e force_rebuild=true

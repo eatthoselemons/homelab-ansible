@@ -1,0 +1,31 @@
+---
+# Static configuration variables
+# These should not be overridden by users
+
+# Harvester version constraints
+harvester_min_version: "1.3.0"
+harvester_supported_versions:
+  - "1.3"
+  - "1.4"
+
+# Hardware requirements
+harvester_min_memory_mb: 32768  # 32GB
+harvester_min_cpu_cores: 4
+
+# Network constants
+harvester_management_vlan: 60
+harvester_management_subnet: "10.60.1.0/24"
+
+# Kubernetes configuration
+harvester_k8s_api_port: 6443
+harvester_metrics_port: 9090
+
+# Timeouts (in seconds)
+harvester_reboot_timeout: 900
+harvester_api_timeout: 600
+harvester_node_ready_timeout: 1200
+
+# PCIe device vendor IDs
+harvester_nvidia_vendor_id: "10de"
+harvester_intel_vendor_id: "8086"
+harvester_amd_vendor_id: "1002"

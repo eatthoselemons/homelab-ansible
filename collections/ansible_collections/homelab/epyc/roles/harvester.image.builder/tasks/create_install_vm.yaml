@@ -1,0 +1,72 @@
+---
+- name: Create VM XML for installation
+  copy:
+    content: |
+      <domain type='kvm'>
+        <name>{{ vm_name }}</name>
+        <memory unit='MiB'>{{ vm_memory }}</memory>
+        <vcpu>{{ vm_vcpus }}</vcpu>
+        <os>
+          <type arch='x86_64' machine='q35'>hvm</type>
+          <boot dev='cdrom'/>
+          <boot dev='hd'/>
+        </os>
+        <features>
+          <acpi/>
+          <apic/>
+          <vmport state='off'/>
+        </features>
+        <cpu mode='host-model'/>
+        <devices>
+          <disk type='file' device='disk'>
+            <driver name='qemu' type='qcow2'/>
+            <source file='{{ vm_image }}'/>
+            <target dev='vda' bus='virtio'/>
+          </disk>
+          <disk type='file' device='cdrom'>
+            <driver name='qemu' type='raw'/>
+            <source file='{{ install_iso }}'/>
+            <target dev='sda' bus='sata'/>
+            <readonly/>
+          </disk>
+          <disk type='file' device='cdrom'>
+            <driver name='qemu' type='raw'/>
+            <source file='{{ cloud_init_iso }}'/>
+            <target dev='sdb' bus='sata'/>
+            <readonly/>
+          </disk>
+          <interface type='network'>
+            <source network='{{ harvester_build_network }}'/>
+            <model type='virtio'/>
+          </interface>
+          <console type='pty'>
+            <target type='serial' port='0'/>
+          </console>
+          <graphics type='vnc' port='-1' autoport='yes' listen='127.0.0.1'/>
+        </devices>
+      </domain>
+    dest: "/tmp/{{ vm_name }}.xml"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Define installation VM
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('file', '/tmp/' + vm_name + '.xml') }}"
+  delegate_to: localhost
+  become: yes
+
+- name: Start installation VM
+  community.libvirt.virt:
+    name: "{{ vm_name }}"
+    state: running
+  delegate_to: localhost
+  become: yes
+
+- name: Clean up VM XML
+  file:
+    path: "/tmp/{{ vm_name }}.xml"
+    state: absent
+  delegate_to: localhost
+  become: no

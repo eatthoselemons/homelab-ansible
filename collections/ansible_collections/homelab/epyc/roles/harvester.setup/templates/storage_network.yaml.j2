@@ -1,0 +1,13 @@
+apiVersion: network.harvesterhci.io/v1beta1
+kind: VlanConfig
+metadata:
+  name: storage-vlan-{{ item.name }}
+  namespace: harvester-system
+spec:
+  clusterNetwork: storage
+  nodeSelector:
+    kubernetes.io/hostname: {{ item.name }}
+  uplink:
+    linkName: {{ item.interfaces[0].name }}
+    type: native
+  vlanId: {{ harvester_storage_network.vlan }}

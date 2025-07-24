@@ -1,0 +1,26 @@
+---
+- name: Create NTP configuration directory
+  ansible.builtin.file:
+    path: "{{ ntp_config_path }}/etc"
+    state: directory
+    mode: '0755'
+
+- name: Template chrony configuration
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: "{{ ntp_config_path }}/etc/chrony.conf"
+    mode: '0644'
+  notify: restart ntp container
+
+- name: Deploy chrony container via docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ ntp_config_path }}/docker-compose.yaml"
+    mode: '0644'
+  notify: restart ntp container
+
+- name: Start NTP server container
+  community.docker.docker_compose_v2:
+    project_src: "{{ ntp_config_path }}"
+    state: present
+  when: not (molecule_test | default(false))

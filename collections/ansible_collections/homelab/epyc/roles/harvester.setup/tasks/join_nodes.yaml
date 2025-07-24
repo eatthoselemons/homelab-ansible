@@ -1,0 +1,126 @@
+---
+- name: Create join configuration directory
+  file:
+    path: "/tmp/harvester-join-configs"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  become: no
+
+- name: Generate join configurations for additional nodes
+  template:
+    src: harvester_config.yaml.j2
+    dest: "/tmp/harvester-join-configs/harvester-join-{{ item.name }}.yaml"
+    mode: '0644'
+  vars:
+    node: "{{ item }}"
+    install_mode: "join"
+  loop: "{{ harvester_nodes[1:] }}"
+  delegate_to: localhost
+  become: no
+  changed_when: false
+
+- name: Display join configuration (test mode)
+  debug:
+    msg: "Would apply join configuration to {{ item.name }}"
+  loop: "{{ harvester_nodes[1:] }}"
+
+- name: Copy join configuration to nodes
+  copy:
+    src: "/tmp/harvester-join-configs/harvester-join-{{ item.name }}.yaml"
+    dest: "/oem/99-harvester.yaml"
+    mode: '0644'
+    owner: root
+    group: root
+  loop: "{{ harvester_nodes[1:] }}"
+  delegate_to: "{{ item.ip }}"
+  become: yes
+
+- name: Display join warning
+  debug:
+    msg: |
+      WARNING: Nodes will be rebooted to join the Harvester cluster.
+      Nodes to be joined: {{ harvester_nodes[1:] | map(attribute='name') | join(', ') }}
+      This process may take 10-15 minutes per node.
+
+- name: Reboot nodes to join cluster
+  reboot:
+    reboot_timeout: 900  # 15 minutes
+    msg: "Rebooting to join Harvester cluster"
+    pre_reboot_delay: 10
+    post_reboot_delay: 30
+  loop: "{{ harvester_nodes[1:] }}"
+  delegate_to: "{{ item.ip }}"
+  become: yes
+  throttle: 1  # Join one node at a time
+
+- name: Wait for SSH to become available on joined nodes
+  wait_for:
+    host: "{{ item.ip }}"
+    port: 22
+    delay: 60
+    timeout: 600
+  loop: "{{ harvester_nodes[1:] }}"
+  delegate_to: localhost
+  become: no
+
+- name: Verify node joined the cluster
+  k8s_info:
+    api_version: v1
+    kind: Node
+    name: "{{ item.name }}"
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: node_check
+  until: 
+    - node_check.resources | length > 0
+    - node_check.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length > 0
+  retries: 60
+  delay: 10
+  loop: "{{ harvester_nodes[1:] }}"
+  delegate_to: localhost
+  become: no
+
+- name: Wait for all nodes to be ready
+  k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: all_nodes
+  until: 
+    - all_nodes.resources | length == harvester_nodes | length
+    - all_nodes.resources | selectattr('status.conditions', 'defined') | map(attribute='status.conditions') | map('selectattr', 'type', 'equalto', 'Ready') | map('selectattr', 'status', 'equalto', 'True') | map('list') | select('length') | list | length == harvester_nodes | length
+  retries: 30
+  delay: 20
+  delegate_to: localhost
+  become: no
+
+- name: Verify cluster management node count
+  k8s_info:
+    api_version: v1
+    kind: Node
+    label_selectors:
+      - "node-role.kubernetes.io/control-plane"
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: management_nodes
+  delegate_to: localhost
+  become: no
+
+- name: Display cluster join status
+  debug:
+    msg: |
+      Cluster Join Complete:
+      - Total nodes: {{ all_nodes.resources | length | default(harvester_nodes | length) }}
+      - Management nodes: {{ management_nodes.resources | length | default(3) }}
+      - All nodes status: Ready
+      
+      Node details:
+      {% for node in all_nodes.resources %}
+      - {{ node.metadata.name }}: {{ node.status.addresses | selectattr('type', 'equalto', 'InternalIP') | map(attribute='address') | first }}
+      {% endfor %}
+
+- name: Clean up temporary join config files
+  shell: rm -f /tmp/harvester-join-configs/*.yaml
+  delegate_to: localhost
+  become: no
+  changed_when: false
+  failed_when: false

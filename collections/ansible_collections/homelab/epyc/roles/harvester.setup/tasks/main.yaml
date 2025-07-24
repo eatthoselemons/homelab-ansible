@@ -1,0 +1,145 @@
+---
+# Validate Infisical environment
+- name: Validate Infisical environment variables
+  block:
+    - name: Check INFISICAL_CLIENT_ID is set
+      assert:
+        that:
+          - harvester_infisical_client_id is defined
+          - harvester_infisical_client_id | length > 0
+        fail_msg: "INFISICAL_CLIENT_ID environment variable must be set. Please set it in your environment or .env file"
+        success_msg: "INFISICAL_CLIENT_ID is set"
+
+    - name: Check INFISICAL_CLIENT_SECRET is set
+      assert:
+        that:
+          - harvester_infisical_client_secret is defined
+          - harvester_infisical_client_secret | length > 0
+        fail_msg: "INFISICAL_CLIENT_SECRET environment variable must be set. Please set it in your environment or .env file"
+        success_msg: "INFISICAL_CLIENT_SECRET is set"
+
+    - name: Check INFISICAL_PROJECT_ID is set
+      assert:
+        that:
+          - harvester_infisical_project_id is defined
+          - harvester_infisical_project_id | length > 0
+        fail_msg: "INFISICAL_PROJECT_ID environment variable must be set. Please set it in your environment or .env file"
+        success_msg: "INFISICAL_PROJECT_ID is set"
+
+# Retrieve secrets from Infisical
+- name: Retrieve Harvester secrets from Infisical
+  block:
+    - name: Get cluster token from Infisical
+      set_fact:
+        harvester_cluster_token_raw: "{{ lookup('infisical.vault.read_secrets',
+          universal_auth_client_id=harvester_infisical_client_id,
+          universal_auth_client_secret=harvester_infisical_client_secret,
+          project_id=harvester_infisical_project_id,
+          path='/',
+          env_slug='prod',
+          url=harvester_infisical_url,
+          secret_name='harvesterClusterToken'
+        ) }}"
+    
+    - name: Extract cluster token value
+      set_fact:
+        harvester_cluster_token: "{{ harvester_cluster_token_raw.value }}"
+
+    - name: Validate cluster token is not empty
+      assert:
+        that:
+          - harvester_cluster_token | length > 0
+        fail_msg: "harvesterClusterToken secret is empty in Infisical"
+        success_msg: "Cluster token retrieved successfully"
+
+    - name: Get admin password from Infisical
+      set_fact:
+        harvester_admin_password_raw: "{{ lookup('infisical.vault.read_secrets',
+          universal_auth_client_id=harvester_infisical_client_id,
+          universal_auth_client_secret=harvester_infisical_client_secret,
+          project_id=harvester_infisical_project_id,
+          path='/',
+          env_slug='prod',
+          url=harvester_infisical_url,
+          secret_name='harvesterAdminPassword'
+        ) }}"
+    
+    - name: Extract admin password value
+      set_fact:
+        harvester_admin_password: "{{ harvester_admin_password_raw.value }}"
+
+    - name: Validate admin password is not empty
+      assert:
+        that:
+          - harvester_admin_password | length > 0
+        fail_msg: "harvesterAdminPassword secret is empty in Infisical"
+        success_msg: "Admin password retrieved successfully"
+
+    - name: Get SSH key from Infisical
+      set_fact:
+        harvester_ssh_key_raw: "{{ lookup('infisical.vault.read_secrets',
+          universal_auth_client_id=harvester_infisical_client_id,
+          universal_auth_client_secret=harvester_infisical_client_secret,
+          project_id=harvester_infisical_project_id,
+          path='/',
+          env_slug='prod',
+          url=harvester_infisical_url,
+          secret_name='harvesterAnsibleSSHKey'
+        ) }}"
+    
+    - name: Extract SSH key value
+      set_fact:
+        harvester_ansible_ssh_key: "{{ harvester_ssh_key_raw.value }}"
+
+    - name: Validate SSH key is not empty
+      assert:
+        that:
+          - harvester_ansible_ssh_key | length > 0
+        fail_msg: "harvesterAnsibleSSHKey secret is empty in Infisical"
+        success_msg: "SSH key retrieved successfully"
+
+# Set test values if in test mode
+- name: Set test values
+  block:
+    - name: Set test cluster token
+      set_fact:
+        harvester_cluster_token: "test-cluster-token-12345"
+    
+    - name: Set test admin password
+      set_fact:
+        harvester_admin_password: "TestPassword123!"
+    
+    - name: Set test SSH key
+      set_fact:
+        harvester_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@example.com"
+
+# Include sub-tasks
+- name: Validate prerequisites
+  include_tasks: validate_prerequisites.yaml
+
+- name: Configure networks
+  include_tasks: configure_networks.yaml
+  when: harvester_configure_networks
+
+- name: Prepare nodes for Harvester
+  include_tasks: prepare_nodes.yaml
+
+- name: Initialize first node
+  include_tasks: init_cluster.yaml
+  run_once: true
+  when: harvester_nodes[0].is_first | default(false)
+
+- name: Join additional nodes
+  include_tasks: join_nodes.yaml
+
+- name: Configure storage network
+  include_tasks: configure_storage.yaml
+  when: harvester_configure_storage_network
+
+- name: Enable PCIe passthrough
+  include_tasks: enable_pcie_passthrough.yaml
+  when: harvester_enable_pcie_passthrough
+
+- name: Setup Terraform access
+  include_tasks: setup_terraform_access.yaml
+  when: harvester_setup_terraform
