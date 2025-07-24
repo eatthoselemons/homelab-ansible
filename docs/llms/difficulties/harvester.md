@@ -141,10 +141,28 @@ collections/ansible_collections/homelab/nexus/extensions/molecule/epyc.harvester
 
 The role uses molecule with Docker containers to simulate the Harvester nodes. Key aspects:
 
-- Uses test mode flag to skip actual API calls
+- Uses privileged containers with KVM access for nested virtualization
+- Creates real VMs using cached base images (following VyOS pattern)
 - Validates configuration generation and file placement
 - Tests idempotency of all tasks
 - Verifies proper error handling
+
+### 12. Test Mode Anti-Pattern Removed
+
+**Issue**: Initially implemented `harvester_test_mode` variable to conditionally skip operations in test environments, which violated our testing principles.
+
+**Why this was wrong**:
+- Created divergence between test and production behavior
+- Tests wouldn't catch real issues
+- Violated the universal testing strategy
+
+**Resolution**: Removed all `harvester_test_mode` references and updated to:
+1. Use proper test infrastructure (privileged containers with KVM)
+2. Implement cached base images for faster testing
+3. Run real operations in all environments
+4. Let tests fail if infrastructure isn't available (better than silent skipping)
+
+This follows the testing strategy documented in `docs/llms/design/testing-strategy.md`
 
 ### 8. Missing netaddr Python Library on Control Node
 
