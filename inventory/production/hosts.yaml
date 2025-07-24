@@ -1,0 +1,32 @@
+---
+all:
+  children:
+    # Nexus - Main services VM host
+    nexus:
+      hosts:
+        nexus:
+          ansible_host: 10.60.0.2
+          ansible_user: jahanson
+    
+    # EPYC Cluster - Harvester nodes
+    epyc_cluster:
+      hosts:
+        epyc:
+          ansible_host: 10.60.1.11
+          harvester_mgmt_interface: "enp1s0f0"  # Update with actual interface
+          harvester_mgmt_mac: "aa:bb:cc:dd:ee:01"  # Update with actual MAC
+          harvester_pcie_devices:
+            - "10de:1fb9"  # NVIDIA GPU example
+            - "10de:10fa"  # NVIDIA GPU Audio
+        
+        mid:
+          ansible_host: 10.60.1.12
+          harvester_mgmt_interface: "enp1s0f0"  # Update with actual interface
+          harvester_mgmt_mac: "aa:bb:cc:dd:ee:02"  # Update with actual MAC
+          harvester_pcie_devices: []
+        
+        thin:
+          ansible_host: 10.60.1.13
+          harvester_mgmt_interface: "enp1s0f0"  # Update with actual interface
+          harvester_mgmt_mac: "aa:bb:cc:dd:ee:03"  # Update with actual MAC
+          harvester_pcie_devices: []
