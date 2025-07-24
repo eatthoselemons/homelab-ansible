@@ -25,6 +25,7 @@ This document defines the naming conventions used throughout the homelab-ansible
 - **Format**: `<component>_<description>` (e.g., `vyos_network_mode`)
 - **Use the primary component name** from the role (e.g., for `vyos.setup` use `vyos_*`)
 - **Private variables** start with underscore: `_vyos_temp_dir`
+- **Document each variable** with a comment above it
 - **Examples**:
   - Role `vyos.setup`:
     - ✅ `vyos_iso_path`
@@ -37,6 +38,29 @@ This document defines the naming conventions used throughout the homelab-ansible
     - ✅ `ntp_pools`
   - ❌ `network_mode` (missing prefix)
   - ❌ `vyos-iso-path` (using hyphens)
+
+## Variable Placement
+- **Role Defaults** → `roles/*/defaults/main.yaml`
+- **Test Overrides** → `molecule/*/group_vars/all.yaml`
+- **Production Values** → `site/group_vars/*.yaml` or `site/host_vars/*.yaml`
+- **Never** → `molecule.yaml` host_vars section (use group_vars instead)
+
+## Variable Structure Example
+```yaml
+# roles/*/defaults/main.yaml
+# Network configuration mode  
+# Options: nat, bridge, macvtap
+vyos_network_mode: bridge
+
+# molecule/*/group_vars/all.yaml
+vyos_network_mode: nat  # Override for testing
+```
+
+## Environment Variables
+```yaml
+# Use lookup for secrets/paths
+vyos_iso_path: "{{ lookup('env', 'VYOS_ISO_PATH') | default('/opt/vyos/current.iso') }}"
+```
 
 ## Test Naming (Molecule)
 - **Format**: Use dot notation matching the role being tested
@@ -87,10 +111,20 @@ This document defines the naming conventions used throughout the homelab-ansible
   - ❌ `setup.yml` (wrong extension)
 
 ## Quick Reference Checklist
+
+### Naming Conventions
 - [ ] All YAML files use `.yaml` extension (except Molecule files)
 - [ ] Roles use dot notation (e.g., `vyos.setup`)
-- [ ] Variables prefixed with role name using underscores
+- [ ] Variables prefixed with component name using underscores
 - [ ] Test names match role names with dots
 - [ ] Task names are descriptive and start with capital letter
 - [ ] Templates end with `.j2`
 - [ ] Playbooks use hyphens for word separation
+
+### Variable Validation
+- [ ] Variables prefixed with component name?
+- [ ] Defaults in `defaults/main.yaml`?
+- [ ] Test overrides in `group_vars/all.yaml`?
+- [ ] No variables in `molecule.yaml` provisioner?
+- [ ] Each variable has a comment?
+- [ ] Secrets use environment lookups?
