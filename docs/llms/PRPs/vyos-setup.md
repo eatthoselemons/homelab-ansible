@@ -203,7 +203,7 @@ vyos_architecture: amd64
 ---
 - name: Build VyOS image if needed
   include_role:
-    name: homelab.nexus.vyos_image_builder
+    name: homelab.nexus.vyos.image.builder
   when: vyos_build_image | default(false)
 
 - name: Install libvirt and dependencies
@@ -488,7 +488,7 @@ verifier:
 
     - name: Include vyos_setup role
       include_role:
-        name: homelab.nexus.vyos_setup
+        name: homelab.nexus.vyos.setup
 
 # verify.yaml
 ---

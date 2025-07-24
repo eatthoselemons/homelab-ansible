@@ -307,7 +307,7 @@ converge.yml:
   hosts: all
   become: yes
   roles:
-    - role: homelab.nexus.ntp_server
+    - role: homelab.nexus.ntp.server
 ```
 
 verify.yml:

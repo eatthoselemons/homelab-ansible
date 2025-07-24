@@ -1,0 +1,66 @@
+---
+- name: Create cloud-init user-data for {{ cloud_init_name }}
+  copy:
+    content: |
+      #cloud-config
+      hostname: {{ cloud_init_name }}
+      
+      # Create default user
+      users:
+        - name: rancher
+          groups: sudo
+          shell: /bin/bash
+          sudo: ALL=(ALL) NOPASSWD:ALL
+          ssh_authorized_keys:
+            - {{ harvester_build_ssh_key }}
+      
+      # Set password for console access during build
+      chpasswd:
+        expire: false
+        users:
+          - rancher:{{ harvester_build_password }}
+      
+      # Basic network configuration
+      write_files:
+        - path: /etc/sysctl.d/90-harvester.conf
+          content: |
+            net.ipv4.ip_forward=1
+            net.ipv6.conf.all.forwarding=1
+      
+      # Run commands after boot
+      runcmd:
+        - sysctl -p /etc/sysctl.d/90-harvester.conf
+        - echo "Harvester base image initialized" > /etc/harvester-base-ready
+    dest: "{{ harvester_images_dir }}/{{ cloud_init_name }}-user-data"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Create cloud-init meta-data for {{ cloud_init_name }}
+  copy:
+    content: |
+      instance-id: {{ cloud_init_name }}
+      local-hostname: {{ cloud_init_name }}
+    dest: "{{ harvester_images_dir }}/{{ cloud_init_name }}-meta-data"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+
+- name: Create cloud-init ISO for {{ cloud_init_name }}
+  command: >
+    genisoimage -output {{ harvester_images_dir }}/{{ cloud_init_name }}-cloud-init.iso
+    -volid cidata -joliet -rock
+    {{ harvester_images_dir }}/{{ cloud_init_name }}-user-data
+    {{ harvester_images_dir }}/{{ cloud_init_name }}-meta-data
+  delegate_to: localhost
+  become: no
+
+- name: Clean up cloud-init files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ harvester_images_dir }}/{{ cloud_init_name }}-user-data"
+    - "{{ harvester_images_dir }}/{{ cloud_init_name }}-meta-data"
+  delegate_to: localhost
+  become: no

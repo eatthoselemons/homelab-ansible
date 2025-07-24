@@ -597,7 +597,7 @@ yamllint roles/harvester_setup/
 ### Level 2: Molecule Tests
 ```bash
 cd /home/user/IdeaProjects/homelab-ansible
-./test.sh test epyc-harvester-setup
+./test.sh test epyc.harvester_setup
 ```
 
 ### Level 3: Cluster Verification

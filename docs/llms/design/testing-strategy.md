@@ -207,7 +207,7 @@ All tests MUST follow this structure in `converge.yml`:
 ```markdown
 I'll test the harvester_setup role:
 
-$ ./test.sh test epyc-harvester-setup
+$ ./test.sh test epyc.harvester_setup
 
 PHASE 1/4: Syntax and Variable Validation... ✓
 PHASE 2/4: Dependency Validation... ✓  
