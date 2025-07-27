@@ -21,6 +21,10 @@ provisioner:
   config_options:
     defaults:
       collections_paths: /home/user/IdeaProjects/homelab-ansible/collections
+      roles_path: /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles
+  env:
+    ANSIBLE_COLLECTIONS_PATH: /home/user/IdeaProjects/homelab-ansible/collections:/home/user/.ansible/collections
+    ANSIBLE_ROLES_PATH: /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles:/home/user/.ansible/roles
   playbooks:
     converge: ${MOLECULE_PLAYBOOK:-converge.yml}
 verifier:

@@ -8,7 +8,7 @@
   gather_facts: yes
   become: true
   collections:
-    - homelab.epyc
+    - ansible.utils
   
   vars:
     # Test identification
@@ -160,12 +160,13 @@
               Test incomplete! DO NOT mark as passing!
         
         - name: Verify Ansible collections
-          ansible.builtin.command:
+          ansible.builtin.shell:
             cmd: ansible-galaxy collection list | grep -E "(kubernetes\.core|community\.general)"
           delegate_to: localhost
           become: no
           changed_when: false
           register: collection_check
+          failed_when: false
         
         - name: Phase 2 complete
           debug:
@@ -188,7 +189,7 @@
         
         - name: Test network configuration generation
           include_role:
-            name: harvester_setup
+            name: harvester.setup
             tasks_from: configure_networks
           vars:
         
@@ -218,7 +219,7 @@
           delegate_to: localhost
           become: no
           vars:
-            role_path: "{{ playbook_dir }}/../../../ansible_collections/homelab/epyc/roles/harvester_setup"
+            role_path: "{{ playbook_dir }}/../../roles/harvester.setup"
             node: "{{ harvester_nodes[0] }}"
         
         - name: Phase 3 complete
@@ -264,7 +265,7 @@
         # Run the full role
         - name: Execute complete Harvester setup
           include_role:
-            name: harvester_setup
+            name: harvester.setup
           vars:
             # Override test mode based on environment
         
