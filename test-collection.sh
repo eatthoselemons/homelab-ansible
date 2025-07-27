@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test runner script for Ansible Molecule tests
+# Test runner script for Ansible Molecule tests with collection support
 # Handles environment setup, virtual environment, and directory navigation
 
 set -e
@@ -15,8 +15,9 @@ fi
 # Set molecule paths
 VENV_PATH="/home/user/ansible-venv"
 MOLECULE_BIN="${VENV_PATH}/bin/molecule"
-TEST_DIR="collections/ansible_collections/homelab/nexus/extensions"
-MOLECULE_DIR="$TEST_DIR/molecule"
+
+# Default collection is nexus for backward compatibility
+DEFAULT_COLLECTION="nexus"
 
 # Add venv bin to PATH so ansible commands are available
 export PATH="${VENV_PATH}/bin:$PATH"
@@ -46,8 +47,6 @@ check_vyos_image() {
     return 1  # No valid real image found
 }
 
-# Determine test mode (will be set later after parsing args)
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -60,6 +59,7 @@ NC='\033[0m' # No Color
 PATTERN_MODE=false
 DEBUG_MODE=false
 FORCE_REAL=false
+COLLECTION=""
 
 # Function to print colored output
 print_info() {
@@ -93,22 +93,26 @@ fi
 # Function to run tests matching a pattern
 run_pattern_tests() {
     local pattern="$1"
+    local collection="$2"
     local failed_tests=()
     local passed_tests=()
     local total_tests=0
     
-    print_info "Running tests matching pattern: $pattern"
+    local test_dir="collections/ansible_collections/homelab/${collection}/extensions"
+    local molecule_dir="$test_dir/molecule"
+    
+    print_info "Running tests matching pattern: $pattern in collection: $collection"
     echo ""
     
     # Find all tests matching the pattern
-    for dir in "$MOLECULE_DIR"/*; do
-        if [ -d "$dir" ] && [ -f "$dir/molecule.yaml" ]; then
+    for dir in "$molecule_dir"/*; do
+        if [ -d "$dir" ] && [ -f "$dir/molecule.yml" ]; then
             test_name=$(basename "$dir")
             if [[ "$test_name" =~ $pattern ]]; then
                 ((total_tests++))
                 echo "----------------------------------------"
                 print_info "Running test: $test_name"
-                if run_single_test "$test_name"; then
+                if run_single_test "$test_name" "test" "$collection"; then
                     passed_tests+=("$test_name")
                     print_info "✓ Test passed: $test_name"
                 else
@@ -156,6 +160,7 @@ run_pattern_tests() {
 run_single_test() {
     local scenario="$1"
     local command="${2:-test}"
+    local collection="${3:-$DEFAULT_COLLECTION}"
     
     local molecule_args=""
     if [ "$DEBUG_MODE" = true ]; then
@@ -191,6 +196,10 @@ SCENARIO=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --collection|-c)
+            COLLECTION="$2"
+            shift 2
+            ;;
         --pattern|-p)
             PATTERN_MODE=true
             shift
@@ -215,6 +224,7 @@ while [[ $# -gt 0 ]]; do
             echo "  destroy <scenario> Destroy test instances"
             echo ""
             echo "Options:"
+            echo "  --collection, -c  Specify collection (nexus or epyc, default: nexus)"
             echo "  --pattern, -p     Run tests matching pattern (use with scenario as pattern)"
             echo "  --debug           Enable molecule debug output"
             echo "  --real            Force real test mode (requires valid VyOS image)"
@@ -223,6 +233,7 @@ while [[ $# -gt 0 ]]; do
             echo "Examples:"
             echo "  $0 list"
             echo "  $0 test nexus.vyos.setup"
+            echo "  $0 --collection epyc test harvester.setup"
             echo "  $0 --pattern vyos                # Run all vyos tests"
             echo "  $0 --debug test nexus.vyos.vlans"
             echo "  $0 --real test nexus.vyos.setup  # Force real mode"
@@ -249,6 +260,7 @@ done
 
 # Set defaults
 COMMAND=${COMMAND:-list}
+COLLECTION=${COLLECTION:-$DEFAULT_COLLECTION}
 
 # Determine test mode based on options and image availability
 if [ "$FORCE_REAL" = true ]; then
@@ -273,6 +285,17 @@ else
     fi
 fi
 
+# Set test directory based on collection
+TEST_DIR="collections/ansible_collections/homelab/${COLLECTION}/extensions"
+MOLECULE_DIR="$TEST_DIR/molecule"
+
+# Validate collection exists
+if [ ! -d "$TEST_DIR" ]; then
+    print_error "Collection '$COLLECTION' not found at $TEST_DIR"
+    print_info "Available collections: nexus, epyc"
+    exit 1
+fi
+
 # Change to test directory
 cd "$TEST_DIR" || {
     print_error "Failed to change to test directory: $TEST_DIR"
@@ -280,6 +303,7 @@ cd "$TEST_DIR" || {
 }
 
 print_info "Current directory: $(pwd)"
+print_info "Collection: $COLLECTION"
 
 # Handle pattern mode
 if [ "$PATTERN_MODE" = true ]; then
@@ -288,19 +312,19 @@ if [ "$PATTERN_MODE" = true ]; then
         print_info "Usage: $0 --pattern <pattern>"
         exit 1
     fi
-    run_pattern_tests "$COMMAND"
+    run_pattern_tests "$COMMAND" "$COLLECTION"
     exit $?
 fi
 
 # Execute molecule command
 case "$COMMAND" in
     list)
-        print_info "Listing all molecule scenarios..."
+        print_info "Listing all molecule scenarios in $COLLECTION collection..."
         if [ -d "$MOLECULE_DIR" ]; then
             echo ""
             local test_count=0
             for dir in "$MOLECULE_DIR"/*; do
-                if [ -d "$dir" ] && [ -f "$dir/molecule.yaml" ]; then
+                if [ -d "$dir" ] && [ -f "$dir/molecule.yml" ]; then
                     test_name=$(basename "$dir")
                     print_test "$test_name"
                     ((test_count++))
@@ -320,7 +344,7 @@ case "$COMMAND" in
             exit 1
         fi
         print_info "Running $COMMAND for scenario: $SCENARIO"
-        run_single_test "$SCENARIO" "$COMMAND"
+        run_single_test "$SCENARIO" "$COMMAND" "$COLLECTION"
         ;;
     *)
         print_error "Unknown command: $COMMAND"
@@ -336,6 +360,7 @@ case "$COMMAND" in
         echo "  destroy <scenario> Destroy test instances"
         echo ""
         echo "Options:"
+        echo "  --collection, -c  Specify collection (nexus or epyc)"
         echo "  --pattern, -p     Run tests matching pattern"
         echo "  --debug           Enable molecule debug output"
         echo "  --help, -h        Show detailed help"
@@ -343,6 +368,7 @@ case "$COMMAND" in
         echo "Examples:"
         echo "  $0 list"
         echo "  $0 test nexus.vyos.setup"
+        echo "  $0 --collection epyc test harvester.setup"
         echo "  $0 --pattern vyos"
         echo "  $0 --debug test nexus.vyos.vlans"
         exit 1

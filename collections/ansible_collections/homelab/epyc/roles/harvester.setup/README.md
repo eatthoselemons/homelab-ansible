@@ -143,7 +143,7 @@ The role executes the following steps:
 Run molecule tests:
 ```bash
 cd /home/user/IdeaProjects/homelab-ansible
-./test.sh test epyc.harvester_setup
+./test-collection.sh --collection epyc test harvester.setup
 ```
 
 ## Verification

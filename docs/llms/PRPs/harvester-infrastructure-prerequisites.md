@@ -372,7 +372,7 @@ yamllint roles/ntp_server/
 ### Level 2: Molecule Tests
 ```bash
 cd /home/user/IdeaProjects/homelab-ansible
-./test.sh test nexus-ntp-server
+./test-collection.sh test nexus.ntp.server
 ```
 
 ### Level 3: Manual Verification

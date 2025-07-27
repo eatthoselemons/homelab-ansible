@@ -51,7 +51,7 @@ None.
 
 ```bash
 # Run molecule tests
-./test.sh test nexus-ntp-server
+./test-collection.sh test nexus.ntp.server
 
 # Test NTP server after deployment
 ntpdate -q your-ntp-server

@@ -1,5 +1,5 @@
 ### 🎯 Top Priority Rules
-1. **Always run full tests** - Use `./test.sh test <name>`, never just syntax checks
+1. **Always run full tests** - Use `./test-collection.sh test <name>`, never just syntax checks
 2. **Never hardcode secrets** - Prefer Infisical for secrets
 3. **Follow naming conventions** - Check all names comply with `docs/llms/best-practices/naming-conventions.md`
 4. **Track tasks properly** - Create task files in `docs/humans/tasks/` to track work progress
@@ -28,7 +28,7 @@
 ### 🧪 Testing & Reliability
 - **Always create molecule unit tests for new features** (functions, classes, routes, etc).
 - **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
-- **Run FULL tests, not just syntax checks** - When verifying that tests work, always run the complete test suite using `./test.sh test <test-name>`. Time is not an issue; the preference is that tests fully work.
+- **Run FULL tests, not just syntax checks** - When verifying that tests work, always run the complete test suite using `./test-collection.sh test <test-name>`. Time is not an issue; the preference is that tests fully work.
 - **Test verification priority**: Full functionality over speed. Always run complete test cycles to ensure proper validation.
 
 ### ✅ Task Completion
@@ -59,8 +59,9 @@
 
 
 ### 🧪 Testing with Molecule
-- **Always use test.sh**: `./test.sh test <name>` for full tests (handles environment setup automatically)
+- **Always use test-collection.sh**: `./test-collection.sh test <name>` for full tests (handles environment setup automatically)
 - **Available commands**: list, test, syntax, converge, verify, destroy
+- **Collection support**: Use `--collection epyc` for epyc tests, defaults to nexus
 - **Environment setup**: Copy `.env.example` to `.env` for secrets
 - **Priority**: Full tests over speed - always run complete test cycles
 - **Production similarity**: Tests should mirror production deployment as closely as possible
@@ -75,7 +76,7 @@
 - **Ansible Galaxy Collection**: `collections/ansible_collections/homelab/` - collection for all hardware
 - **Hosts**: `collections/ansible_collections/homelab/<host>` - where every individual host deployment lives, ie nexus, epyc-server
 - **Site**: `site/` - ansible for deploying to prod - ie physical hardware
-- **Testing**: `collections/ansible_collections/homelab/nexus/extensions/molecule/` - testing scenarios for all roles
+- **Testing**: `collections/ansible_collections/homelab/<collection>/extensions/molecule/` - testing scenarios for each collection's roles
 - **Architecture**: `docs/design/ai-prompt.md` has the entire system architecture 
 
 ### ⚠️ Common Gotchas to Avoid

@@ -27,7 +27,7 @@ there is a harvester best practices at `docs/llms/best-practices/harvester-setup
 all tests and roles should be impotent
 tests should be prefixed and named with whatever their location is ie `nexus.vyos.setup`, `nexus.vyos.security_hardening` or `epyc.harvester.setup`
 
-use the `test.sh` to run molecule tests
+use the `test-collection.sh` to run molecule tests
 
 make sure to include a desired folder structure in your resulting PRP
 

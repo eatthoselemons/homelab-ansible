@@ -27,9 +27,9 @@ This strategy addresses common LLM testing anti-patterns and ensures comprehensi
 
 ```bash
 # Separate test levels that LLMs will abuse
-./test.sh test role-name --smoke     # LLMs will only run this
-./test.sh test role-name --quick     # LLMs will prefer this
-./test.sh test role-name --validate  # LLMs will stop here
+./test-collection.sh test role-name --smoke     # LLMs will only run this
+./test-collection.sh test role-name --quick     # LLMs will prefer this
+./test-collection.sh test role-name --validate  # LLMs will stop here
 ```
 
 ### ❌ DO NOT Structure Tests Like This:
@@ -250,7 +250,9 @@ platforms:
 
 1. **ALWAYS use the standard test command**:
    ```bash
-   ./test.sh test <role-name>
+   ./test-collection.sh test <role-name>
+   # Or for epyc collection:
+   ./test-collection.sh --collection epyc test <role-name>
    ```
 
 2. **NEVER create shortcuts**:
@@ -278,7 +280,7 @@ platforms:
 ```markdown
 I'll test the harvester_setup role:
 
-$ ./test.sh test epyc.harvester_setup
+$ ./test-collection.sh --collection epyc test harvester.setup
 
 PHASE 1/4: Syntax and Variable Validation... ✓
 PHASE 2/4: Dependency Validation... ✓  
@@ -337,7 +339,7 @@ Phase 4: Deploy apps, verify sync status
 ## Summary
 
 - **Universal approach**: Same pattern for ALL components
-- **One test path**: `./test.sh test <name>`
+- **One test path**: `./test-collection.sh test <name>`
 - **Four mandatory phases**: All must pass
 - **No shortcuts**: Full test or nothing
 - **Clear markers**: Know when testing is complete

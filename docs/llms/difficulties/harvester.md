@@ -118,11 +118,11 @@ AnsibleUndefinedVariable: 'loop' is undefined
 
 ### 7. Test Framework Limitations
 
-**Issue**: The test.sh script only searches for tests in the nexus collection.
+**Issue**: The original test.sh script only searched for tests in the nexus collection.
 
-**Resolution**: Created tests in the nexus collection directory structure:
+**Resolution**: Created test-collection.sh script that supports multiple collections. Tests are now properly located in:
 ```
-collections/ansible_collections/homelab/nexus/extensions/molecule/epyc.harvester_setup/
+collections/ansible_collections/homelab/epyc/extensions/molecule/harvester.setup/
 ```
 
 ## Key Learnings
