@@ -1,0 +1,66 @@
+---
+- name: Create network configuration directory
+  file:
+    path: "/tmp/harvester-network-configs"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  become: no
+
+- name: Generate network configuration for each node
+  template:
+    src: network_config.yaml.j2
+    dest: "/tmp/harvester-network-configs/network-{{ item.name }}.yaml"
+    mode: '0644'
+  loop: "{{ harvester_nodes }}"
+  delegate_to: localhost
+  become: no
+  changed_when: false
+
+- name: Display network configuration (test mode)
+  debug:
+    msg: "Network configuration would be applied to {{ item.name }}"
+  loop: "{{ harvester_nodes }}"
+
+- name: Create OEM directory on nodes
+  file:
+    path: /oem
+    state: directory
+    mode: '0755'
+  delegate_to: "{{ item.ip }}"
+  loop: "{{ harvester_nodes }}"
+  become: yes
+
+- name: Apply network configuration to nodes
+  copy:
+    src: "/tmp/harvester-network-configs/network-{{ item.name }}.yaml"
+    dest: "/oem/99-network.yaml"
+    mode: '0644'
+    owner: root
+    group: root
+  delegate_to: "{{ item.ip }}"
+  loop: "{{ harvester_nodes }}"
+  become: yes
+
+- name: Verify network configuration files
+  stat:
+    path: "/oem/99-network.yaml"
+  delegate_to: "{{ item.ip }}"
+  loop: "{{ harvester_nodes }}"
+  become: yes
+  register: network_config_check
+
+- name: Assert network configurations are in place
+  assert:
+    that:
+      - (item.stat.exists and item.stat.size > 0)
+    fail_msg: "Network configuration missing on {{ item.item.name }}"
+    success_msg: "Network configuration applied to {{ item.item.name }}"
+  loop: "{{ network_config_check.results | default([]) }}"
+
+- name: Clean up temporary network config files
+  shell: rm -f /tmp/harvester-network-configs/*.yaml
+  delegate_to: localhost
+  become: no
+  changed_when: false
+  failed_when: false

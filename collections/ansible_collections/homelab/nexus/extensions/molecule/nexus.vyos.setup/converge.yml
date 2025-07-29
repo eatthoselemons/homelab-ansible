@@ -1,0 +1,98 @@
+---
+- name: Converge
+  hosts: all
+  vars:
+    vyos_base_image: "{{ lookup('env', 'VYOS_BASE_IMAGE') | default(playbook_dir + '/../../../../../../images/vyos/vyos-base.qcow2') }}"
+    vyos_base_image_checksum_file: "{{ vyos_base_image }}.sha1"
+    vyos_iso_path: "{{ lookup('env', 'VYOS_ISO_PATH') | default('/opt/vyos/vyos-current.iso') }}"
+    vyos_test_image: "{{ molecule_ephemeral_directory }}/vyos-test-{{ lookup('pipe', 'date +%s%N') }}.qcow2"
+
+  tasks:
+    - name: Install required packages for testing
+      apt:
+        name:
+          - cloud-image-utils
+          - python3-lxml
+          - python3-libvirt
+          - qemu-utils
+          - file
+          - python3-passlib
+        state: present
+        update_cache: true
+
+    - name: Check if VyOS ISO exists
+      stat:
+        path: "{{ vyos_iso_path }}"
+      register: vyos_iso_check
+
+    - name: Get checksum of current VyOS ISO
+      command: "sha1sum {{ vyos_iso_path }}"
+      register: current_iso_checksum_raw
+      when: vyos_iso_check.stat.exists
+      changed_when: false
+
+    - name: Set current ISO checksum fact
+      set_fact:
+        current_iso_checksum: "{{ current_iso_checksum_raw.stdout.split(' ')[0] }}"
+      when: vyos_iso_check.stat.exists
+
+    - name: Check if base image exists
+      stat:
+        path: "{{ vyos_base_image }}"
+      register: base_image_stat
+
+    - name: Get checksum of previously used ISO
+      slurp:
+        src: "{{ vyos_base_image_checksum_file }}"
+      register: stored_checksum_data
+      when: base_image_stat.stat.exists
+
+    - name: Set stored checksum fact
+      set_fact:
+        stored_checksum: "{{ stored_checksum_data.content | b64decode }}"
+      when: stored_checksum_data.content is defined
+
+    - name: Determine if a rebuild is needed
+      set_fact:
+        rebuild_needed: true
+      when: >
+        not base_image_stat.stat.exists or
+        stored_checksum is not defined or
+        current_iso_checksum != stored_checksum
+
+    - name: Build base image if it does not exist or is outdated
+      when: rebuild_needed
+      block:
+        - name: Fail if VyOS ISO not found
+          fail:
+            msg: "VyOS ISO not found at {{ vyos_iso_path }}. Cannot build base image."
+          when: not vyos_iso_check.stat.exists
+
+        - name: Verify VyOS ISO is valid
+          command: "file {{ vyos_iso_path }}"
+          register: iso_type
+          changed_when: false
+          failed_when: "'ISO 9660' not in iso_type.stdout"
+
+        - name: Create base image with vyos_setup
+          include_role:
+            name: homelab.nexus.vyos.setup
+          vars:
+            vyos_create_base_image: true
+            vyos_vm_disk_path: "{{ vyos_base_image }}"
+
+        - name: Store checksum of the new base image's ISO
+          copy:
+            content: "{{ current_iso_checksum }}"
+            dest: "{{ vyos_base_image_checksum_file }}"
+
+    - name: Create linked clone for test
+      command: "qemu-img create -f qcow2 -b {{ vyos_base_image }} {{ vyos_test_image }}"
+      changed_when: true
+
+    - name: Run tests against the linked clone
+      include_role:
+        name: ../../../roles/vyos.setup
+      vars:
+        vyos_create_base_image: false
+        vyos_vm_disk_path: "{{ vyos_test_image }}"

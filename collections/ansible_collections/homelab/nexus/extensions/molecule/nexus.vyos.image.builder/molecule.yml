@@ -1,0 +1,45 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: vyos-image-builder-test
+    image: "${MOLECULE_DOCKER_IMAGE:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    pre_build_image: true
+    command: "${MOLECULE_COMMAND:-/lib/systemd/systemd}"
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+    cgroupns_mode: host
+    privileged: true
+    capabilities:
+      - SYS_ADMIN
+    groups:
+      - nexus
+
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      vyos-image-builder-test:
+        vyos_build_dir: /tmp/vyos-build
+        vyos_images_dir: /tmp/vyos-images
+        vyos_version: current
+        vyos_architecture: amd64
+        vyos_build_by: 'molecule-test'
+        vyos_build_type: release
+        vyos_docker_image: "vyos/vyos-build:current"
+        vyos_build_cleanup: true
+        ansible_user_id: root
+        vyos_test_mode: false
+  config_options:
+    defaults:
+      timeout: 2700  # 45 minutes for real VyOS build
+
+verifier:
+  name: ansible

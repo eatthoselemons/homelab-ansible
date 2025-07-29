@@ -1,0 +1,42 @@
+---
+# Verification is built into converge.yaml following universal testing strategy
+# This file exists only for molecule compatibility
+
+- name: Verify
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Check test completion marker
+      stat:
+        path: /tmp/harvester-test-complete.marker
+      register: test_marker
+      delegate_to: localhost
+      become: no
+    
+    - name: Read test results
+      slurp:
+        src: /tmp/harvester-test-complete.marker
+      register: test_results
+      when: test_marker.stat.exists
+      delegate_to: localhost
+      become: no
+    
+    - name: Display test results
+      debug:
+        msg: "{{ test_results.content | b64decode }}"
+      when: test_results is defined and test_results.content is defined
+    
+    - name: Verify test completed successfully
+      assert:
+        that:
+          - test_marker.stat.exists
+          - test_results is defined
+          - "'FULL TEST COMPLETED SUCCESSFULLY' in (test_results.content | b64decode)"
+        fail_msg: |
+          ❌ TEST DID NOT COMPLETE SUCCESSFULLY
+          
+          The converge.yaml test must complete all 4 phases.
+          Check the test output for failures.
+        success_msg: |
+          ✅ Test verification passed
+          All 4 phases completed successfully

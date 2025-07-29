@@ -1,7 +1,7 @@
 ### 🎯 Top Priority Rules
 1. **Always run full tests** - Use `./test.sh test <name>`, never just syntax checks
 2. **Never hardcode secrets** - Prefer Infisical for secrets
-3. **Follow variable checklist** - Check variables comply with `docs/llms/best-practices/variable-checklist.md`
+3. **Follow naming conventions** - Check all names comply with `docs/llms/best-practices/naming-conventions.md`
 4. **Track tasks properly** - Create task files in `docs/humans/tasks/` to track work progress
 5. **Test changes with molecule** - Verify all modifications work correctly
 
@@ -23,7 +23,7 @@
 - **Handlers**: Service restarts and notifications in `handlers/main.yaml`
 - **Avoid bash scripts**: Use structured Ansible configuration blocks
 - **Newlines**: Always have newlines at the end of files
-- **File extensions**: Always use `.yaml` extension, never `.yml`
+- **File extensions**: Always use `.yaml` extension, never `.yml` (exception: Molecule framework files must use `.yml`)
 
 ### 🧪 Testing & Reliability
 - **Always create molecule unit tests for new features** (functions, classes, routes, etc).
@@ -48,7 +48,7 @@
 - **Never delete or overwrite existing code** unless explicitly instructed to or if part of a task from `TASK.md`.
 
 ### 📋 Ansible Best Practices
-- **Always follow the variable checklist** at `docs/llms/best-practices/variable-checklist.md` when creating or modifying variables
+- **Always follow the naming conventions** at `docs/llms/best-practices/naming-conventions.md` when creating or modifying variables
 - **Use YAML anchors and aliases** to reduce duplication
 - **Implement proper error handling** with `failed_when` and `ignore_errors`
 - **Use Infisical for sensitive data** Infisical for runtime secrets

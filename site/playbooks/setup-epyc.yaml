@@ -1,0 +1,132 @@
+---
+- name: Setup EPYC Harvester Cluster
+  hosts: epyc_cluster
+  become: true
+  gather_facts: true
+  
+  vars:
+    # Infisical credentials loaded from environment
+    harvester_infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+    harvester_infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+    harvester_infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
+    
+    # Cluster configuration
+    harvester_cluster_vip: "10.60.1.10"
+    harvester_cluster_name: "homelab-harvester"
+    
+    # Node configuration - will be merged with inventory
+    harvester_nodes:
+      - name: "epyc-harvester"
+        ip: "{{ hostvars['epyc']['ansible_host'] | default('10.60.1.11') }}"
+        is_first: true
+        interfaces:
+          - name: "{{ hostvars['epyc']['harvester_mgmt_interface'] | default('eth0') }}"
+            hwaddr: "{{ hostvars['epyc']['harvester_mgmt_mac'] }}"
+        pcie_devices: "{{ hostvars['epyc']['harvester_pcie_devices'] | default([]) }}"
+      
+      - name: "mid-harvester"
+        ip: "{{ hostvars['mid']['ansible_host'] | default('10.60.1.12') }}"
+        interfaces:
+          - name: "{{ hostvars['mid']['harvester_mgmt_interface'] | default('eth0') }}"
+            hwaddr: "{{ hostvars['mid']['harvester_mgmt_mac'] }}"
+        pcie_devices: "{{ hostvars['mid']['harvester_pcie_devices'] | default([]) }}"
+      
+      - name: "thin-harvester"
+        ip: "{{ hostvars['thin']['ansible_host'] | default('10.60.1.13') }}"
+        interfaces:
+          - name: "{{ hostvars['thin']['harvester_mgmt_interface'] | default('eth0') }}"
+            hwaddr: "{{ hostvars['thin']['harvester_mgmt_mac'] }}"
+        pcie_devices: "{{ hostvars['thin']['harvester_pcie_devices'] | default([]) }}"
+    
+    # Storage network configuration
+    harvester_storage_network:
+      enabled: true
+      vlan: 65
+      cidr: "10.60.65.0/24"
+      ip_range_start: "10.60.65.10"
+      ip_range_end: "10.60.65.250"
+    
+    # Feature flags for production
+    harvester_configure_networks: true
+    harvester_enable_pcie_passthrough: true
+    harvester_configure_storage_network: true
+    harvester_setup_terraform: true
+    
+    # Production mode - NOT test mode
+    
+  pre_tasks:
+    - name: Verify Infisical credentials are set
+      assert:
+        that:
+          - harvester_infisical_client_id | length > 0
+          - harvester_infisical_client_secret | length > 0
+          - harvester_infisical_project_id | length > 0
+        fail_msg: |
+          Missing Infisical credentials. Please ensure these environment variables are set:
+          - INFISICAL_CLIENT_ID
+          - INFISICAL_CLIENT_SECRET
+          - INFISICAL_PROJECT_ID
+          
+          You can set them in your .env file or export them in your shell.
+    
+    - name: Display deployment plan
+      debug:
+        msg: |
+          ========================================
+          Harvester Cluster Deployment Plan
+          ========================================
+          Cluster Name: {{ harvester_cluster_name }}
+          Cluster VIP: {{ harvester_cluster_vip }}
+          
+          Nodes:
+          {% for node in harvester_nodes %}
+          - {{ node.name }}: {{ node.ip }}
+            Interface: {{ node.interfaces[0].name }}
+            PCIe Devices: {{ node.pcie_devices | default([]) | join(', ') or 'None' }}
+          {% endfor %}
+          
+          Storage Network: VLAN {{ harvester_storage_network.vlan }} ({{ harvester_storage_network.cidr }})
+          ========================================
+    
+    - name: Confirm deployment
+      pause:
+        prompt: |
+          
+          This will deploy a 3-node Harvester cluster on your EPYC infrastructure.
+          
+          Press Enter to continue or Ctrl+C to abort...
+        seconds: 10
+
+  roles:
+    - role: homelab.epyc.harvester.setup
+
+  post_tasks:
+    - name: Save kubeconfig location
+      copy:
+        content: |
+          # Harvester Cluster Access
+          
+          Kubeconfig saved at: {{ harvester_kubeconfig_path | default('/tmp/harvester-kubeconfig') }}
+          
+          To access the cluster:
+          export KUBECONFIG={{ harvester_kubeconfig_path | default('/tmp/harvester-kubeconfig') }}
+          kubectl get nodes
+          
+          Web UI: https://{{ harvester_cluster_vip }}
+          
+          Default credentials will be in Infisical.
+        dest: /tmp/harvester-deployment-info.txt
+      delegate_to: localhost
+      become: no
+    
+    - name: Display completion message
+      debug:
+        msg: |
+          ✅ Harvester cluster deployment complete!
+          
+          Access information saved to: /tmp/harvester-deployment-info.txt
+          
+          Next steps:
+          1. Verify cluster health: kubectl get nodes
+          2. Access Web UI: https://{{ harvester_cluster_vip }}
+          3. Configure Terraform provider using the kubeconfig

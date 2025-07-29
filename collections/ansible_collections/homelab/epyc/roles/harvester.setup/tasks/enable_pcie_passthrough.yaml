@@ -1,0 +1,200 @@
+---
+- name: Check if pcidevices addon is already enabled
+  k8s_info:
+    api_version: harvesterhci.io/v1beta1
+    kind: Addon
+    name: pcidevices-controller
+    namespace: harvester-system
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: pcidevices_addon
+  delegate_to: localhost
+  become: no
+
+- name: Enable pcidevices addon
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    definition:
+      apiVersion: harvesterhci.io/v1beta1
+      kind: Addon
+      metadata:
+        name: pcidevices-controller
+        namespace: harvester-system
+      spec:
+        enabled: true
+        valuesContent: |
+          image:
+            repository: rancher/harvester-pcidevices-controller
+            pullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+  delegate_to: localhost
+  become: no
+  when: 
+    - pcidevices_addon.resources | length == 0 or not pcidevices_addon.resources[0].spec.enabled | default(false)
+
+- name: Wait for PCIDevice CRDs to be created
+  k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: pcidevices.devices.harvesterhci.io
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: pcidevice_crd
+  until: pcidevice_crd.resources | length > 0
+  retries: 30
+  delay: 10
+  delegate_to: localhost
+  become: no
+
+- name: Wait for PCIDeviceClaim CRDs to be created
+  k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: pcideviceclaims.devices.harvesterhci.io
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: pcideviceclaim_crd
+  until: pcideviceclaim_crd.resources | length > 0
+  retries: 30
+  delay: 10
+  delegate_to: localhost
+  become: no
+
+- name: Wait for pcidevices controller to scan devices
+  pause:
+    seconds: 30
+
+- name: List available PCI devices
+  k8s_info:
+    api_version: devices.harvesterhci.io/v1beta1
+    kind: PCIDevice
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: pci_devices
+  delegate_to: localhost
+  become: no
+
+- name: Filter GPU devices
+  set_fact:
+    gpu_devices: "{{ pci_devices.resources | selectattr('spec.vendorId', 'equalto', '10de') | list }}"
+  when: 
+    - pci_devices.resources is defined
+
+- name: Display available GPU devices
+  debug:
+    msg: |
+      Available GPU PCI Devices:
+      {% if gpu_devices is defined %}
+      {% for device in gpu_devices %}
+      - Name: {{ device.metadata.name }}
+        Node: {{ device.spec.nodeName }}
+        Device: {{ device.spec.description | default('N/A') }}
+        Vendor ID: {{ device.spec.vendorId }}
+        Device ID: {{ device.spec.deviceId }}
+        Address: {{ device.spec.address }}
+      {% endfor %}
+      {% else %}
+      - Test mode or no GPU devices found
+      {% endif %}
+
+- name: Create PCIDevice claims for passthrough devices
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    definition:
+      apiVersion: devices.harvesterhci.io/v1beta1
+      kind: PCIDeviceClaim
+      metadata:
+        name: "gpu-{{ item.spec.address | replace(':', '-') | replace('.', '-') }}"
+        namespace: harvester-system
+      spec:
+        address: "{{ item.spec.address }}"
+        nodeName: "{{ item.spec.nodeName }}"
+        userName: "admin"
+  loop: "{{ gpu_devices | default([]) }}"
+  delegate_to: localhost
+  become: no
+  when: 
+    - gpu_devices is defined
+    - gpu_devices | length > 0
+
+- name: Verify PCIDevice claims
+  k8s_info:
+    api_version: devices.harvesterhci.io/v1beta1
+    kind: PCIDeviceClaim
+    namespace: harvester-system
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+  register: pci_claims
+  delegate_to: localhost
+  become: no
+
+- name: Label nodes with passthrough capability
+  k8s:
+    state: present
+    kubeconfig: "{{ harvester_kubeconfig_path }}"
+    name: "{{ item }}"
+    api_version: v1
+    kind: Node
+    merge_type: merge
+    definition:
+      metadata:
+        labels:
+          pcidevices.harvesterhci.io/gpu-passthrough: "true"
+          pcidevices.harvesterhci.io/enabled: "true"
+  loop: "{{ harvester_nodes | selectattr('pcie_devices', 'defined') | map(attribute='name') | list }}"
+  delegate_to: localhost
+  become: no
+
+- name: Create example VM with GPU passthrough manifest
+  copy:
+    content: |
+      apiVersion: kubevirt.io/v1
+      kind: VirtualMachine
+      metadata:
+        name: gpu-vm-example
+        namespace: default
+      spec:
+        running: false
+        template:
+          spec:
+            domain:
+              devices:
+                gpus:
+                - deviceName: "10de:1fb9"  # GPU device ID
+                  name: gpu0
+                disks:
+                - disk:
+                    bus: virtio
+                  name: rootdisk
+                interfaces:
+                - masquerade: {}
+                  model: virtio
+                  name: default
+              resources:
+                requests:
+                  memory: 8Gi
+                  cpu: 4
+            networks:
+            - name: default
+              pod: {}
+            volumes:
+            - name: rootdisk
+              containerDisk:
+                image: ubuntu:20.04
+    dest: /tmp/gpu-vm-example.yaml
+  delegate_to: localhost
+  become: no
+
+- name: Display PCIe passthrough status
+  debug:
+    msg: |
+      PCIe Passthrough Configuration:
+      - Addon Status: Enabled
+      - Available GPU Devices: {{ gpu_devices | length if gpu_devices is defined else 0 }}
+      - PCIDevice Claims: {{ pci_claims.resources | length if pci_claims is defined else 0 }}
+      - Example VM manifest: /tmp/gpu-vm-example.yaml
+      
+      Note: VMs with PCIe passthrough cannot be live migrated.

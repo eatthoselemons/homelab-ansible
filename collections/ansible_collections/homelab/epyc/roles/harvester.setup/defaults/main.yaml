@@ -1,0 +1,64 @@
+---
+# Infisical Configuration
+harvester_infisical_client_id: "{{ lookup('env', 'INFISICAL_CLIENT_ID') }}"
+harvester_infisical_client_secret: "{{ lookup('env', 'INFISICAL_CLIENT_SECRET') }}"
+harvester_infisical_project_id: "{{ lookup('env', 'INFISICAL_PROJECT_ID') }}"
+harvester_infisical_url: "https://app.infisical.com"
+
+# Retrieved from Infisical
+harvester_cluster_token: ""
+harvester_admin_password: ""
+harvester_ansible_ssh_key: ""
+
+# Cluster Configuration
+harvester_cluster_vip: "10.60.1.10"
+harvester_cluster_name: "harvester-cluster"
+harvester_dns_servers:
+  - "10.60.0.1"
+  - "1.1.1.1"
+harvester_ntp_servers:
+  - "10.60.0.2"  # Nexus NTP server
+
+# Node Configuration
+harvester_nodes:
+  - name: "epyc-harvester"
+    ip: "10.60.1.11"
+    is_first: true
+    interfaces:
+      - name: "eth0"
+        hwaddr: ""  # From inventory
+    pcie_devices: ["10de:1fb9", "10de:10fa"]  # GPU
+  - name: "mid-harvester"
+    ip: "10.60.1.12"
+    interfaces:
+      - name: "eth0"
+        hwaddr: ""  # From inventory
+  - name: "thin-harvester"
+    ip: "10.60.1.13"
+    interfaces:
+      - name: "eth0"
+        hwaddr: ""  # From inventory
+
+# Storage Network
+harvester_storage_network:
+  enabled: true
+  vlan: 65
+  cidr: "10.60.65.0/24"
+  ip_range_start: "10.60.65.10"
+  ip_range_end: "10.60.65.250"
+
+# Feature Flags
+harvester_configure_networks: true
+harvester_enable_pcie_passthrough: true
+harvester_configure_storage_network: true
+harvester_setup_terraform: true
+
+# Kubernetes Configuration
+harvester_kubeconfig_path: "/tmp/harvester-kubeconfig"
+
+# Storage Configuration
+harvester_install_device: "/dev/sda"
+
+# Terraform Configuration
+harvester_terraform_provider_version: "0.6.7"
+harvester_terraform_test_dir: "/tmp/harvester-terraform-test"

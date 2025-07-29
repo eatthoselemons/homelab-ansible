@@ -1,0 +1,100 @@
+---
+- name: Set base image path
+  set_fact:
+    base_image_path: "{{ harvester_images_dir }}/{{ base_image.name }}.qcow2"
+
+- name: Check if base image already exists
+  stat:
+    path: "{{ base_image_path }}"
+  register: base_image_stat
+  delegate_to: localhost
+  become: no
+
+- name: Build base image for {{ base_image.name }}
+  when: not base_image_stat.stat.exists or rebuild_needed
+  block:
+    - name: Remove old base image if rebuilding
+      file:
+        path: "{{ base_image_path }}"
+        state: absent
+      delegate_to: localhost
+      become: no
+      when: base_image_stat.stat.exists
+
+    - name: Create QCOW2 disk image
+      command: >
+        qemu-img create -f qcow2 
+        {{ base_image_path }}
+        {{ base_image.disk_size }}
+      delegate_to: localhost
+      become: no
+
+    - name: Generate cloud-init ISO for {{ base_image.name }}
+      include_tasks: create_cloud_init.yaml
+      vars:
+        cloud_init_name: "{{ base_image.name }}"
+
+    - name: Create temporary VM for installation
+      include_tasks: create_install_vm.yaml
+      vars:
+        vm_name: "{{ base_image.name }}-install"
+        vm_image: "{{ base_image_path }}"
+        vm_memory: "{{ base_image.memory }}"
+        vm_vcpus: "{{ base_image.vcpus }}"
+        install_iso: "{{ harvester_iso_path }}"
+        cloud_init_iso: "{{ harvester_images_dir }}/{{ base_image.name }}-cloud-init.iso"
+
+    - name: Wait for installation to complete
+      wait_for:
+        timeout: 1800  # 30 minutes
+      delegate_to: localhost
+
+    - name: Shutdown and cleanup installation VM
+      community.libvirt.virt:
+        name: "{{ base_image.name }}-install"
+        state: destroyed
+      delegate_to: localhost
+      become: yes
+
+    - name: Undefine installation VM
+      community.libvirt.virt:
+        name: "{{ base_image.name }}-install"
+        command: undefine
+      delegate_to: localhost
+      become: yes
+
+    - name: Remove cloud-init ISO
+      file:
+        path: "{{ harvester_images_dir }}/{{ base_image.name }}-cloud-init.iso"
+        state: absent
+      delegate_to: localhost
+      become: no
+
+    - name: Optimize base image
+      command: >
+        qemu-img convert -O qcow2 -c
+        {{ base_image_path }}
+        {{ base_image_path }}.tmp
+      delegate_to: localhost
+      become: no
+
+    - name: Replace with optimized image
+      command: >
+        mv {{ base_image_path }}.tmp {{ base_image_path }}
+      delegate_to: localhost
+      become: no
+
+- name: Verify base image
+  command: >
+    qemu-img info {{ base_image_path }}
+  register: image_info
+  delegate_to: localhost
+  become: no
+  changed_when: false
+
+- name: Display base image info
+  debug:
+    msg: |
+      Base image created: {{ base_image.name }}
+      Path: {{ base_image_path }}
+      Info: {{ image_info.stdout }}
