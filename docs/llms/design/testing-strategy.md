@@ -305,18 +305,43 @@ nightly:full:
 ### Runner Requirements
 
 ```yaml
-# Runner configuration requirements
-gitlab-runner-1:
-  executor: docker
-  docker:
-    privileged: true  # For nested virt
-    volumes:
-      - /dev/kvm:/dev/kvm
-      - /cache:/cache  # VM image cache
+# PREFERRED: Harvester-based runners (once Harvester is deployed)
+gitlab-runner-harvester:
+  executor: shell
+  # Runner runs as VM inside Harvester
+  # Uses Harvester API to provision test VMs dynamically
+  environment:
+    - HARVESTER_URL=https://harvester.homelab.local
+    - HARVESTER_NAMESPACE=gitlab-ci
+  tags:
+    - harvester
+    - dynamic-vms
+  pre_build_script: |
+    # Verify Harvester API access
+    kubectl get vms -n gitlab-ci || exit 1
+
+# FALLBACK: Local KVM for initial bootstrap
+gitlab-runner-local-kvm:
+  executor: shell
+  environment:
+    - KVM_ENABLED=true
+    - LIBVIRT_DEFAULT_URI=qemu:///system
   tags:
     - kvm-enabled
     - nested-virt
     - high-memory  # 32GB+
+  pre_build_script: |
+    # Ensure KVM is available
+    test -e /dev/kvm || exit 1
+
+# SIMPLE: Docker executor (only for syntax/lint tests)
+gitlab-runner-syntax:
+  executor: docker
+  docker:
+    image: ansible:latest
+  tags:
+    - docker
+    - syntax-only
 ```
 
 ## VM Management Strategies
@@ -325,28 +350,55 @@ gitlab-runner-1:
 
 | Approach | Pros | Cons | Use Case |
 |----------|------|------|----------|
-| **Vagrant + libvirt** | Mature, well-documented | Complex setup | Developer machines |
-| **Docker + KVM** | Fast, lightweight | Limited OS options | CI/CD pipelines |
+| **Vagrant + libvirt** | Mature, well-documented | Initial setup complexity | Developer machines |
+| **Harvester VMs** | Dogfooding, no cloud costs, API-driven | Requires Harvester deployed | PREFERRED for CI/CD |
+| **Shell executor + KVM** | Direct, no nesting issues | Requires dedicated hardware | Initial bootstrap only |
+| **Docker + nested KVM** | Container isolation | Complex, performance hit | NOT RECOMMENDED |
 | **Pre-provisioned VMs** | Very fast | State management | Repeated testing |
 | **Cloud VMs** | Scalable | Cost, latency | Burst testing |
-| **Harvester itself** | Dogfooding | Complexity | Advanced testing |
 
-### Recommended: Hybrid Approach
+**Better Alternative for CI/CD**:
+```
+# Direct approach - no Docker layer:
+GitLab Runner (Host with KVM)
+  └── Test VM (Direct KVM)
+```
+
+Use shell executor with direct KVM access instead of Docker executor.
+
+### Recommended: Progressive Approach
 
 1. **Local Development**: Vagrant + libvirt
    - Easy to debug
-   - Full VM capabilities
+   - Full VM capabilities  
    - Good caching
+   - Direct hardware access
 
-2. **CI/CD Pipeline**: Docker + nested KVM
-   - Fast provisioning
-   - Resource efficient
-   - Good isolation
+2. **CI/CD Pipeline (Preferred)**: Harvester-based Testing
+   - GitLab runs as VM in Harvester
+   - GitLab runners are VMs in Harvester
+   - Test VMs provisioned dynamically via Harvester API
+   - No cloud costs - using your own infrastructure
+   - Clean separation of concerns
+   - Example flow:
+     ```
+     GitLab (Harvester VM) 
+       → Runner (Harvester VM)
+         → Provisions test VM via API
+         → Runs tests
+         → Destroys test VM
+     ```
 
-3. **Full Integration**: Dedicated VM pool
-   - Persistent test environment
-   - Snapshot/restore capability
+3. **CI/CD Pipeline (Bootstrap)**: Shell executor + local KVM
+   - Used only until Harvester is deployed
+   - Direct VM management
+   - Transitions to Harvester-based once available
+
+4. **Full Integration**: Harvester VM pools
+   - Persistent test environments in namespaces
+   - Snapshot/restore via Harvester
    - Real hardware characteristics
+   - API-driven provisioning
 
 ## Anti-patterns to Avoid
 
@@ -383,32 +435,40 @@ mock_harvester_api: true
 
 ## Implementation Priorities
 
-### Phase 1: Foundation (Week 1-2)
+### Phase 1: Foundation (Do First - Local Testing)
 - [ ] Create `test-integration.sh` script
-- [ ] Setup basic VM provisioning (Vagrant)
+- [ ] Setup basic VM provisioning with Vagrant + libvirt locally
 - [ ] Implement networking section test
 - [ ] Implement storage section test
 - [ ] Create validation script framework
+- [ ] Document local testing setup for developers
 
-### Phase 2: CI/CD Integration (Week 3-4)
-- [ ] Setup GitLab runners with KVM
-- [ ] Implement pipeline configuration
-- [ ] Add artifact collection
-- [ ] Setup VM image caching
-- [ ] Create dashboard for test results
-
-### Phase 3: Advanced Testing (Week 5-6)
-- [ ] Harvester single-node tests
-- [ ] Harvester cluster tests
+### Phase 2: Advanced Component Testing (Do Second - Prove It Works)
+- [ ] Harvester single-node tests locally
+- [ ] Harvester cluster tests (3-node)
 - [ ] VyOS configuration tests
 - [ ] TrueNAS integration tests
+- [ ] UPS shutdown sequence tests
+- [ ] Full end-to-end deployment test locally
+
+### Phase 3: Optimization (Do Third - Make It Better)
+- [ ] Parallel test execution
+- [ ] Smart test selection based on changed components
+- [ ] VM image caching strategy
+- [ ] Test result caching
+- [ ] Failure analysis and reporting
 - [ ] Performance benchmarks
 
-### Phase 4: Optimization (Ongoing)
-- [ ] Parallel test execution
-- [ ] Smart test selection (changed components)
-- [ ] Test result caching
-- [ ] Failure analysis automation
+### Phase 4: CI/CD Integration (Do Last - When Infrastructure Exists)
+- [ ] Setup GitLab instance
+- [ ] Configure runners with shell executor + KVM
+- [ ] Implement pipeline configuration
+- [ ] Add artifact collection
+- [ ] Setup distributed VM image caching
+- [ ] Create test result dashboard
+- [ ] Integrate with merge request workflow
+
+**Note**: Phases 1-3 can be done immediately without any infrastructure. Phase 4 requires GitLab to be deployed and operational.
 
 ## Success Metrics
 
