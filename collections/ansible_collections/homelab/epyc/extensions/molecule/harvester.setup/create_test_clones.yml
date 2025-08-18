@@ -1,0 +1,73 @@
+---
+# Create linked clones from base images for testing
+- name: Set test VM paths
+  set_fact:
+    test_vm_dir: "/tmp/harvester-test-{{ lookup('pipe', 'date +%s') }}"
+
+- name: Create test VM directory
+  file:
+    path: "{{ test_vm_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  become: no
+
+- name: Create linked clones for each test node
+  shell: |
+    # Find the base image for this node
+    {% for base in harvester_base_images %}
+    {% if base.name == item.base_image %}
+    BASE_IMAGE="{{ base.path }}"
+    {% endif %}
+    {% endfor %}
+    
+    # Create linked clone
+    qemu-img create -f qcow2 -F qcow2 \
+      -b "${BASE_IMAGE}" \
+      "{{ test_vm_dir }}/{{ item.name }}.qcow2"
+  loop: "{{ harvester_nodes }}"
+  delegate_to: localhost
+  become: no
+
+- name: Create VM definitions for test nodes
+  template:
+    src: test_vm.xml.j2
+    dest: "{{ test_vm_dir }}/{{ item.name }}.xml"
+    mode: '0644'
+  loop: "{{ harvester_nodes }}"
+  delegate_to: localhost
+  become: no
+
+- name: Define and start test VMs
+  block:
+    - name: Define VMs in libvirt
+      community.libvirt.virt:
+        command: define
+        xml: "{{ lookup('file', test_vm_dir + '/' + item.name + '.xml') }}"
+      loop: "{{ harvester_nodes }}"
+      become: yes
+
+    - name: Start test VMs
+      community.libvirt.virt:
+        name: "{{ item.name }}"
+        state: running
+      loop: "{{ harvester_nodes }}"
+      become: yes
+
+    - name: Wait for VMs to be accessible
+      wait_for:
+        host: "{{ item.ip }}"
+        port: 22
+        delay: 30
+        timeout: 300
+      loop: "{{ harvester_nodes }}"
+
+- name: Add test VMs to inventory
+  add_host:
+    name: "{{ item.name }}"
+    ansible_host: "{{ item.ip }}"
+    ansible_user: rancher
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    groups:
+      - harvester_test_nodes
+  loop: "{{ harvester_nodes }}"

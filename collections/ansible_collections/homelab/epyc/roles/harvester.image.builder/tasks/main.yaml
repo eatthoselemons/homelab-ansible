@@ -1,0 +1,84 @@
+---
+- name: Ensure images directory exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ harvester_images_dir }}"
+    - "{{ harvester_images_dir }}/checksums"
+  delegate_to: localhost
+  become: no
+
+- name: Check if Harvester ISO exists
+  stat:
+    path: "{{ harvester_iso_path }}"
+  register: iso_stat
+  delegate_to: localhost
+  become: no
+
+- name: Download Harvester ISO if not present
+  when: not iso_stat.stat.exists
+  block:
+    - name: Download Harvester ISO
+      get_url:
+        url: "{{ harvester_iso_url }}"
+        dest: "{{ harvester_iso_path }}"
+        mode: '0644'
+        timeout: "{{ harvester_download_timeout }}"
+      delegate_to: localhost
+      become: no
+
+    - name: Download ISO checksum
+      get_url:
+        url: "{{ harvester_iso_checksum_url }}"
+        dest: "{{ harvester_iso_path }}.sha256sum"
+        mode: '0644'
+      delegate_to: localhost
+      become: no
+
+    - name: Verify ISO checksum
+      shell: |
+        cd {{ harvester_images_dir }}
+        sha256sum -c harvester-{{ harvester_version }}.iso.sha256sum
+      delegate_to: localhost
+      become: no
+      changed_when: false
+
+- name: Calculate current ISO checksum
+  shell: "sha256sum {{ harvester_iso_path }} | cut -d' ' -f1"
+  register: current_iso_checksum
+  delegate_to: localhost
+  become: no
+  changed_when: false
+
+- name: Check stored checksum
+  slurp:
+    src: "{{ harvester_checksum_file }}"
+  register: stored_checksum
+  delegate_to: localhost
+  become: no
+  failed_when: false
+
+- name: Determine if rebuild is needed
+  set_fact:
+    rebuild_needed: >-
+      {{ harvester_force_rebuild or 
+         stored_checksum.failed or
+         (stored_checksum.content | b64decode | trim) != current_iso_checksum.stdout }}
+
+- name: Store current checksum
+  copy:
+    content: "{{ current_iso_checksum.stdout }}"
+    dest: "{{ harvester_checksum_file }}"
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+  when: rebuild_needed
+
+- name: Build base images
+  include_tasks: build_base_image.yaml
+  loop: "{{ harvester_base_images }}"
+  loop_control:
+    loop_var: base_image
+  when: rebuild_needed or not (harvester_images_dir + '/' + base_image.name + '.qcow2') | exists

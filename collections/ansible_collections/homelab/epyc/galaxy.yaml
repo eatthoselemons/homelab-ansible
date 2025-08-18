@@ -1,0 +1,28 @@
+namespace: homelab
+name: epyc
+version: 1.0.0
+description: Homelab EPYC infrastructure automation collection for Harvester deployment and management
+authors:
+  - homelab team
+repository: https://github.com/homelab/homelab-ansible
+documentation: https://github.com/homelab/homelab-ansible
+homepage: https://github.com/homelab/homelab-ansible
+issues: https://github.com/homelab/homelab-ansible/issues
+license:
+  - MIT
+tags:
+  - infrastructure
+  - homelab
+  - harvester
+  - kubernetes
+  - virtualization
+  - hci
+build_ignore:
+  - "*.tar.gz"
+  - ".git"
+  - ".gitignore"
+  - "molecule"
+dependencies:
+  community.general: ">=1.0.0"
+  kubernetes.core: ">=2.4.0"
+  ansible.posix: ">=1.5.0"

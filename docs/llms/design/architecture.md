@@ -57,7 +57,7 @@ Internet -> Modem -> Nexus:Port1(WAN) -> VyOS VM
 - **Starbucks Method**: Encrypted files per server, TPM-decrypted for cloud access
 
 #### Storage Strategy
-- **TrueNAS VM**: GPU passthrough for ZFS management
+- **TrueNAS VM**: pcie passthrough for ZFS management
 - **Codex Volume**: RAIDZ2 with 2-drive redundancy + hot spare
 - **Ephemeral Volume**: Single 4TB for non-critical data
 - **Container Storage**: Harvester CSI + selective NFS mounts
@@ -67,7 +67,7 @@ Internet -> Modem -> Nexus:Port1(WAN) -> VyOS VM
 - **Network Boot**: All nodes default to iPXE, MAC-based image selection
 - **GitOps**: ArgoCD monitors Git repositories for configuration changes
 - **Data Preservation**: UUID-based disk identification prevents data loss during redeployment
-- **IAC**: Using a variety of services, ansible, pulumi, argocd 
+- **IAC**: Using a variety of services, ansible, terraform, argocd 
 
 ## Implementation Challenges Requiring API Documentation
 

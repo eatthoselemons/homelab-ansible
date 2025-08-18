@@ -7,6 +7,7 @@ Ansible collection for managing homelab infrastructure including VyOS routers, s
 ### For Developers
 - **[Variable Organization Guide](docs/humans/variable-organization-explained.md)** - Understanding how variables work in Ansible
 - **[Task Management](docs/humans/tasks/)** - How to track work and create PR descriptions
+- **[Naming Conventions](docs/llms/best-practices/naming-conventions.md)** - Project naming standards and conventions
 
 ## Setup Router
 ### Put in Infisical

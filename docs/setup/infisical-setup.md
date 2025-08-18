@@ -70,11 +70,11 @@ INFISICAL_URL=https://app.infisical.com  # Optional, defaults to Infisical cloud
 
 ### 5. Export Environment Variables
 
-The `test.sh` script automatically loads the `.env` file, so for testing you just need to:
+The `test-collection.sh` script automatically loads the `.env` file, so for testing you just need to:
 
 ```bash
 # Run tests - .env will be loaded automatically
-./test.sh test nexus.vyos.setup
+./test-collection.sh test nexus.vyos.setup
 ```
 
 For running Ansible playbooks directly, export the variables:
@@ -110,7 +110,7 @@ ansible localhost -m debug -a "msg={{ lookup('infisical.vault.read_secrets',
 
 ```bash
 # Ensure environment variables are set
-./test.sh test nexus.vyos.setup
+./test-collection.sh test nexus.vyos.setup
 ```
 
 ## Troubleshooting

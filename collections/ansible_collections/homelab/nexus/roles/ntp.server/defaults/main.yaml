@@ -1,0 +1,16 @@
+---
+# NTP Server Configuration
+ntp_timezone: "UTC"
+ntp_container_name: "ntp-server"
+ntp_container_image: "11notes/chrony:4.7"
+ntp_config_path: "/opt/chrony"
+
+# NTP pools to use
+ntp_pools:
+  - "ch.pool.ntp.org iburst maxsources 5"
+  - "ntp.ubuntu.com iburst maxsources 5"
+
+# Networks allowed to query NTP
+ntp_allowed_networks:
+  - "10.60.0.0/16"  # Management network
+  - "10.50.0.0/16"  # Secure network

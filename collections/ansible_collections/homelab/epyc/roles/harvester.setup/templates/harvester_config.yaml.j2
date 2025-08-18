@@ -1,0 +1,47 @@
+#cloud-config
+hostname: {{ node.name }}
+ssh_authorized_keys:
+  - "{{ harvester_ansible_ssh_key }}"
+
+write_files:
+  - path: /etc/sysctl.d/99-harvester.conf
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      fs.inotify.max_user_instances = 8192
+      fs.inotify.max_user_watches = 524288
+
+harvester:
+  install:
+    mode: {{ install_mode }}
+    management_interface: {{ node.interfaces[0].name }}
+    device: {{ harvester_install_device }}
+    iso_url: ""
+    tty: ttyS0
+    vip: {{ harvester_cluster_vip }}
+    vip_mode: static
+{% if install_mode == "join" %}
+    server_url: https://{{ harvester_cluster_vip }}:6443
+{% endif %}
+    token: {{ harvester_cluster_token }}
+    password: {{ harvester_admin_password }}
+  network:
+    interfaces:
+{% for iface in node.interfaces %}
+      - name: {{ iface.name }}
+        hwaddr: "{{ iface.hwaddr }}"
+        method: static
+        ip: {{ node.ip }}/24
+        gateway: 10.60.1.1
+        mtu: 1500
+{% endfor %}
+    dns_nameservers:
+{% for dns in harvester_dns_servers %}
+      - {{ dns }}
+{% endfor %}
+  ntp_servers:
+{% for ntp in harvester_ntp_servers %}
+    - {{ ntp }}
+{% endfor %}

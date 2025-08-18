@@ -1,0 +1,39 @@
+---
+- name: update grub
+  command: update-grub
+  become: yes
+  listen: "update grub configuration"
+
+- name: restart networking
+  service:
+    name: networking
+    state: restarted
+  become: yes
+  listen: "restart network services"
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  become: yes
+  listen: "reload systemd daemon"
+
+- name: restart kubelet
+  service:
+    name: kubelet
+    state: restarted
+  become: yes
+  listen: "restart kubernetes services"
+
+- name: wait for api
+  uri:
+    url: "https://{{ harvester_cluster_vip }}:6443/healthz"
+    validate_certs: no
+    status_code:
+      - 200
+      - 401
+  register: api_health
+  until: api_health.status in [200, 401]
+  retries: 30
+  delay: 10
+  delegate_to: localhost
+  listen: "verify harvester api"

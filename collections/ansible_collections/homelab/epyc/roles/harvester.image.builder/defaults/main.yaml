@@ -1,0 +1,41 @@
+---
+# Harvester version configuration
+harvester_version: "v1.3.2"
+harvester_iso_url: "https://releases.rancher.com/harvester/{{ harvester_version }}/harvester-{{ harvester_version }}-amd64.iso"
+harvester_iso_checksum_url: "{{ harvester_iso_url }}.sha256sum"
+
+# Images directory
+harvester_images_dir: "{{ playbook_dir }}/../images/harvester"
+harvester_iso_path: "{{ harvester_images_dir }}/harvester-{{ harvester_version }}.iso"
+harvester_checksum_file: "{{ harvester_images_dir }}/checksums/harvester-{{ harvester_version }}.sha256"
+
+# Base image configuration
+harvester_base_images:
+  - name: "harvester-epyc-base"
+    memory: 16384  # 16GB for EPYC with GPU
+    vcpus: 8
+    disk_size: "200G"
+    features:
+      - gpu_passthrough
+      - nvme_passthrough
+  - name: "harvester-mid-base"
+    memory: 8192   # 8GB for mid server
+    vcpus: 4
+    disk_size: "150G"
+    features: []
+  - name: "harvester-thin-base"
+    memory: 4096   # 4GB for thin client
+    vcpus: 2
+    disk_size: "100G"
+    features: []
+
+# Build configuration
+harvester_force_rebuild: false
+harvester_download_timeout: 3600  # 1 hour for ISO download
+
+# VM network configuration for base images
+harvester_build_network: "default"  # Use default libvirt network during build
+
+# Cloud-init configuration for base images
+harvester_build_ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+harvester_build_password: "harvester"  # Temporary password for building

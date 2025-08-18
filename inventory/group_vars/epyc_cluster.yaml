@@ -1,0 +1,24 @@
+---
+# EPYC Cluster Group Variables
+# These apply to all nodes in the Harvester cluster
+
+# DNS configuration
+harvester_dns_servers:
+  - "10.60.0.1"    # VyOS router
+  - "1.1.1.1"      # Cloudflare
+  - "8.8.8.8"      # Google
+
+# NTP configuration  
+harvester_ntp_servers:
+  - "10.60.0.2"    # Nexus NTP server
+
+# Network configuration
+harvester_management_gateway: "10.60.1.1"
+harvester_management_netmask: "255.255.255.0"
+
+# Ansible configuration for Harvester nodes
+ansible_user: rancher
+ansible_ssh_private_key_file: ~/.ssh/harvester_key
+
+# Override in host_vars for specific hardware
+harvester_mgmt_interface: "eth0"

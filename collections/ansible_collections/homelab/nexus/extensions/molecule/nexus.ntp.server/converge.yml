@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  become: yes
+  vars:
+    # Override to skip container start in test
+    molecule_test: true
+    # Include NTP config path
+    ntp_config_path: "/opt/chrony"
+  tasks:
+    - name: Include NTP server role tasks (without container start)
+      ansible.builtin.include_role:
+        name: ../../../roles/ntp_server
+        tasks_from: main
+      vars:
+        ansible_check_mode: no
+
+    # Override the container start task
+    - name: Create docker-compose.yaml for testing (no actual start)
+      ansible.builtin.copy:
+        content: "# Docker compose file created for testing"
+        dest: "{{ ntp_config_path }}/docker-compose-test-marker"
+        mode: '0644'
+      when: molecule_test | default(false)

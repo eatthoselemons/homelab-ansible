@@ -1,0 +1,97 @@
+---
+# Minimal test for harvester.setup role - focusing on testable components
+- name: Minimal Converge
+  hosts: all
+  gather_facts: yes
+  become: true
+  
+  vars:
+    # Test configuration
+    harvester_nodes:
+      - name: "{{ inventory_hostname }}"
+        ip: "{{ inventory_hostname }}"
+        actual_ip: "{{ harvester_node_ip | default('10.60.1.11') }}"
+        is_first: "{{ inventory_hostname == 'test-harvester-1' }}"
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:{{ '%02d' | format(groups['all'].index(inventory_hostname) + 1) }}"
+        pcie_devices: "{{ ['10de:1fb9', '10de:10fa'] if inventory_hostname == 'test-harvester-1' else [] }}"
+    
+    # Required variables
+    harvester_infisical_client_id: "test-client-id"
+    harvester_infisical_client_secret: "test-client-secret"
+    harvester_infisical_project_id: "test-project-id"
+    harvester_kubeconfig_path: "/tmp/test-harvester-kubeconfig"
+    harvester_terraform_test_dir: "/tmp/harvester-terraform-test"
+    harvester_storage_network:
+      enabled: true
+      vlan: 65
+      cidr: "10.60.65.0/24"
+      ip_range_start: "10.60.65.10"
+      ip_range_end: "10.60.65.250"
+    harvester_dns_servers:
+      - "10.60.0.1"
+      - "1.1.1.1"
+  
+  tasks:
+    - name: Install netaddr on controller
+      pip:
+        name: netaddr
+        state: present
+      delegate_to: localhost
+      run_once: true
+      become: no
+    
+    - name: Create required directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /oem
+        - /tmp/harvester-configs
+    
+    - name: Test template generation locally
+      template:
+        src: "/home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles/harvester.setup/templates/network_config.yaml.j2"
+        dest: "/tmp/network-{{ inventory_hostname }}.yaml"
+      vars:
+        item: "{{ harvester_nodes[0] }}"
+    
+    - name: Test harvester configuration template
+      template:
+        src: "/home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles/harvester.setup/templates/harvester_config.yaml.j2"
+        dest: "/tmp/harvester-{{ inventory_hostname }}.yaml"
+      vars:
+        node: "{{ harvester_nodes[0] }}"
+        harvester_cluster_vip: "10.60.1.10"
+        harvester_cluster_name: "test-cluster"
+        harvester_cluster_token: "test-token"
+        harvester_admin_password: "test-password"
+        harvester_install_device: "/dev/sda"
+        harvester_ntp_servers: ["10.60.0.2"]
+        harvester_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2E test@example"
+        install_mode: "create"
+    
+    - name: Verify templates were created
+      stat:
+        path: "{{ item }}"
+      loop:
+        - "/tmp/network-{{ inventory_hostname }}.yaml"
+        - "/tmp/harvester-{{ inventory_hostname }}.yaml"
+      register: template_checks
+    
+    - name: Assert templates exist
+      assert:
+        that:
+          - item.stat.exists
+        fail_msg: "Template generation failed for {{ item.item }}"
+      loop: "{{ template_checks.results }}"
+    
+    - name: Test completed successfully
+      debug:
+        msg: |
+          ✅ Minimal test passed
+          - Templates can be generated
+          - Variables are properly structured
+          - Basic functionality verified

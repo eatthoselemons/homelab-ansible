@@ -1,16 +1,10 @@
 ---
+# Site-wide playbook that deploys all infrastructure
+
 - name: Configure Nexus Node
-  hosts: nexus
-  become: true
-  roles:
-    - role: homelab.nexus.system_setup
-      tags: [system, always]
-    
-    - role: homelab.nexus.security_hardening
-      tags: [security, always]
-    
-    - role: homelab.nexus.vyos_setup
-      tags: [vyos]
-    
-    - role: homelab.nexus.services_vm_setup
-      tags: [services] 
+  import_playbook: setup-nexus.yaml
+  tags: [nexus]
+
+- name: Configure EPYC Harvester Cluster
+  import_playbook: setup-epyc.yaml
+  tags: [epyc, harvester] 

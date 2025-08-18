@@ -1,0 +1,46 @@
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Check chrony.conf exists
+      ansible.builtin.stat:
+        path: /opt/chrony/etc/chrony.conf
+      register: chrony_conf
+
+    - name: Assert chrony.conf exists
+      ansible.builtin.assert:
+        that:
+          - chrony_conf.stat.exists
+        fail_msg: "chrony.conf was not created"
+
+    - name: Verify chrony.conf contains allow rules
+      ansible.builtin.lineinfile:
+        path: /opt/chrony/etc/chrony.conf
+        line: "{{ item }}"
+        state: present
+      check_mode: yes
+      register: conf_check
+      failed_when: conf_check.changed
+      loop:
+        - "allow 10.60.0.0/16"
+        - "allow 10.50.0.0/16"
+
+    - name: Verify docker-compose.yaml exists
+      ansible.builtin.stat:
+        path: /opt/chrony/docker-compose.yaml
+      register: compose_file
+
+    - name: Assert docker-compose.yaml exists
+      ansible.builtin.assert:
+        that:
+          - compose_file.stat.exists
+        fail_msg: "docker-compose.yaml was not created"
+
+    - name: Check container image in docker-compose
+      ansible.builtin.lineinfile:
+        path: /opt/chrony/docker-compose.yaml
+        regexp: '.*image:.*11notes/chrony:4.7.*'
+        state: present
+      check_mode: yes
+      register: image_check
+      failed_when: image_check.changed

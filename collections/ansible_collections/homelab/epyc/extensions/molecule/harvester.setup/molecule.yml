@@ -1,0 +1,97 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: libvirt
+    type: libvirt
+    options:
+      driver: kvm
+      cpu_mode: host-passthrough
+platforms:
+  # Create three VMs for realistic testing
+  - name: test-harvester-1
+    box: generic/ubuntu2204
+    memory: 4096  # 4GB RAM for testing
+    cpus: 2
+    provider_options:
+      nested: true  # Enable nested virtualization
+      video_type: 'qxl'
+      disk_bus: 'virtio'
+    groups:
+      - harvester
+      - harvester_nodes
+  
+  - name: test-harvester-2
+    box: generic/ubuntu2204
+    memory: 4096
+    cpus: 2
+    provider_options:
+      nested: true
+      video_type: 'qxl'
+      disk_bus: 'virtio'
+    groups:
+      - harvester
+      - harvester_nodes
+
+  - name: test-harvester-3
+    box: generic/ubuntu2204
+    memory: 4096
+    cpus: 2
+    provider_options:
+      nested: true
+      video_type: 'qxl'
+      disk_bus: 'virtio'
+    groups:
+      - harvester
+      - harvester_nodes
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      collections_paths: /home/user/IdeaProjects/homelab-ansible/collections
+      roles_path: /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles
+      host_key_checking: false
+  env:
+    ANSIBLE_COLLECTIONS_PATH: /home/user/IdeaProjects/homelab-ansible/collections:/home/user/.ansible/collections
+    ANSIBLE_ROLES_PATH: /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles:/home/user/.ansible/roles
+    ANSIBLE_HOST_KEY_CHECKING: false
+  inventory:
+    host_vars:
+      test-harvester-1:
+        ansible_user: vagrant
+        ansible_become: true
+      test-harvester-2:
+        ansible_user: vagrant
+        ansible_become: true
+      test-harvester-3:
+        ansible_user: vagrant
+        ansible_become: true
+  playbooks:
+    converge: ${MOLECULE_PLAYBOOK:-converge.yml}
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    # Skip idempotence for long tests
+    # - idempotence  
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
+  create_sequence:
+    - create
+    - prepare
+  destroy_sequence:
+    - destroy
+  converge_sequence:
+    - converge
