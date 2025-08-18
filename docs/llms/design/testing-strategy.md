@@ -1,351 +1,478 @@
-# Universal Testing Strategy for Homelab Infrastructure
+# Testing Strategy for Homelab Infrastructure
 
-## Overview
+## Core Philosophy
 
-This document defines the UNIVERSAL testing strategy that applies to ALL components in the homelab architecture:
-- VyOS router configuration
-- Harvester cluster deployment
-- TrueNAS storage integration
-- ArgoCD GitOps setup
-- Infisical secrets management
-- iPXE network boot
-- Rancher container orchestration
-- All future components
+**Infrastructure code is about side effects**. Testing it without those side effects is meaningless ceremony. We explicitly reject the notion of "unit testing" infrastructure code with heavy mocking.
 
-This strategy addresses common LLM testing anti-patterns and ensures comprehensive test coverage across the entire infrastructure.
+### Key Principles
 
-## Core Principles
+1. **No mock infrastructure** - If you're mocking networks, storage, or services, stop
+2. **Test at the right level** - Use appropriate tools for each testing layer
+3. **Real validation only** - Tests must verify actual functionality, not mocked behavior
+4. **Progressive validation** - Fast failures for quick feedback
+5. **One test path** - No shortcuts or "smoke tests" that can be abused
 
-1. **No Separate Smoke Tests** - All tests run through the same path
-2. **Progressive Validation** - Fast failures for quick feedback
-3. **Full Tests by Default** - No shortcuts that LLMs can abuse
-4. **Clear Completion Markers** - Obvious indicators when tests fully complete
+## Testing Pyramid
 
-## Anti-Patterns to Avoid
+```
+Production Deployment (manual validation)
+           ↑
+    Staging Hardware (full integration)
+           ↑  
+    VM Integration Tests (automated, sectioned)
+           ↑
+    Syntax & Structure Validation (molecule minimal)
+```
 
-### ❌ DO NOT Create These:
+## Testing Approaches
+
+### 1. Minimal Molecule Tests
+
+**Purpose**: Basic validation only - NOT functional testing
+
+What Molecule IS good for:
+- YAML syntax checking
+- Variable structure validation  
+- Template rendering verification
+- Role dependency checking
+
+What Molecule is NOT for:
+- Network configuration (requires real interfaces)
+- Storage setup (requires real block devices)
+- Service interactions (requires real services)
+- Cluster formation (requires real nodes)
+- Anything requiring actual infrastructure
+
+**Implementation**:
+```yaml
+# Keep molecule tests dead simple
+- name: Syntax check only
+  hosts: all
+  tasks:
+    - name: Validate required variables
+      assert:
+        that:
+          - required_var is defined
+          - required_var.property is defined
+    
+    - name: Test template rendering
+      template:
+        src: config.j2
+        dest: /tmp/test-render.conf
+      check_mode: yes
+```
+
+### 2. Sectioned Integration Tests
+
+**Purpose**: Test real functionality in focused scenarios using VMs
+
+#### Test Configuration
+
+```yaml
+# test-integration-config.yaml
+test_defaults:
+  vm_backend: libvirt  # or virtualbox, vagrant
+  base_image: ubuntu-24.04-cloud
+  cleanup: true
+  parallel_execution: false
+
+sections:
+  networking:
+    description: "Network bonds, VLANs, bridges"
+    playbook: site.yml
+    tags: [networking]
+    inventory: test-inventory/networking
+    validate_script: tests/validate-networking.sh
+    required_vms: 1
+    estimated_time: "5 minutes"
+    requires_nested_virt: false
+    
+  storage:
+    description: "LVM, filesystem, mounts"
+    playbook: site.yml
+    tags: [storage]
+    inventory: test-inventory/storage
+    validate_script: tests/validate-storage.sh
+    required_vms: 1
+    estimated_time: "5 minutes"
+    requires_nested_virt: false
+    
+  vyos_config:
+    description: "VyOS router configuration"
+    playbook: site.yml
+    tags: [vyos]
+    inventory: test-inventory/vyos
+    validate_script: tests/validate-vyos.sh
+    required_vms: 1
+    estimated_time: "10 minutes"
+    requires_nested_virt: true
+    
+  harvester_single:
+    description: "Single node Harvester setup"
+    playbook: site.yml
+    tags: [harvester]
+    inventory: test-inventory/single-node
+    validate_script: tests/validate-harvester-single.sh
+    required_vms: 1
+    estimated_time: "15 minutes"
+    requires_nested_virt: true
+    
+  harvester_cluster:
+    description: "3-node Harvester cluster"
+    playbook: site.yml
+    tags: [harvester]
+    inventory: test-inventory/cluster
+    validate_script: tests/validate-harvester-cluster.sh
+    required_vms: 3
+    estimated_time: "30 minutes"
+    requires_nested_virt: true
+    
+  ups_shutdown:
+    description: "UPS monitoring and shutdown sequences"
+    playbook: site.yml
+    tags: [ups]
+    inventory: test-inventory/ups
+    validate_script: tests/validate-ups.sh
+    required_vms: 1
+    estimated_time: "5 minutes"
+    requires_nested_virt: false
+    
+  truenas_integration:
+    description: "TrueNAS API and storage configuration"
+    playbook: site.yml
+    tags: [truenas]
+    inventory: test-inventory/truenas
+    validate_script: tests/validate-truenas.sh
+    required_vms: 1
+    estimated_time: "10 minutes"
+    requires_nested_virt: false
+```
+
+#### Test Execution Script
 
 ```bash
-# Separate test levels that LLMs will abuse
-./test-collection.sh test role-name --smoke     # LLMs will only run this
-./test-collection.sh test role-name --quick     # LLMs will prefer this
-./test-collection.sh test role-name --validate  # LLMs will stop here
+#!/bin/bash
+# test-integration.sh
+
+# Run specific section
+./test-integration.sh --section networking
+
+# Run multiple sections
+./test-integration.sh --section networking --section storage
+
+# Run all quick tests (< 10 min)
+./test-integration.sh --quick
+
+# Run all tests
+./test-integration.sh --all
+
+# Run with custom VM backend
+./test-integration.sh --section harvester_cluster --backend vagrant
+
+# Keep VMs for debugging
+./test-integration.sh --section networking --no-cleanup
 ```
 
-### ❌ DO NOT Structure Tests Like This:
+### 3. Validation Scripts
 
-```yaml
-# Bad: Optional stages that can be skipped
-when: test_stage == 'full' or run_all_tests
+Each test section has a validation script that performs REAL checks:
 
-# Bad: Test mode flags that skip real functionality
-when: not harvester_test_mode
+```bash
+#!/bin/bash
+# tests/validate-networking.sh
+set -e
 
-# Bad: Different behavior for test vs production
-if harvester_test_mode:
-  mock_deployment()
-else:
-  real_deployment()
+echo "=== NETWORK VALIDATION STARTING ==="
+
+# Real network interface checks
+echo "Checking bond configuration..."
+ssh testvm "ip link show bond0" || exit 1
+ssh testvm "cat /proc/net/bonding/bond0" || exit 1
+
+# Real VLAN verification
+echo "Checking VLAN interfaces..."
+for vlan in 100 200 300; do
+    ssh testvm "ip link show bond0.$vlan" || exit 1
+done
+
+# Real connectivity test
+echo "Testing network connectivity..."
+ssh testvm "ping -c 3 10.0.100.1" || exit 1
+ssh testvm "ping -c 3 10.0.200.1" || exit 1
+
+# Real service checks
+echo "Checking bridge configuration..."
+ssh testvm "brctl show br-mgmt" || exit 1
+ssh testvm "bridge vlan show" || exit 1
+
+echo "✅ NETWORK VALIDATION COMPLETE"
 ```
 
-### ❌ NEVER Add Test Mode Variables:
+## CI/CD Pipeline Implementation
 
-**DO NOT create variables like:**
-- `test_mode`
-- `mock_mode` 
-- `dry_run` (except for config generation)
-- `skip_deployment`
-- `validation_only`
-
-**Why:** These create a divergence between test and production behavior. Tests should execute the SAME code that runs in production, just in a controlled environment.
-
-## Correct Testing Pattern
-
-### ✅ Single Test Path with Built-in Phases
-
-All tests MUST follow this structure in `converge.yaml`:
+### GitLab CI Configuration
 
 ```yaml
----
-- name: Converge
-  hosts: all
-  gather_facts: yes
-  become: yes
-  
-  tasks:
-    # PHASE 1: Syntax and Variable Validation (30 seconds)
-    # Always runs - catches configuration errors early
-    - name: "PHASE 1/4: Syntax and Variable Validation"
-      block:
-        - name: Validate required variables
-          assert:
-            that:
-              - required_var is defined
-              - required_var.property is defined
-            fail_msg: "❌ VALIDATION FAILED - Missing required variable"
-            
-        - name: Validate variable formats
-          assert:
-            that:
-              - item.ip | ansible.utils.ipaddr
-            fail_msg: "❌ Invalid IP address format"
-          loop: "{{ node_list }}"
-      tags: [always]
-    
-    # PHASE 2: Dependency Validation (1 minute)
-    # Always runs - ensures environment is ready
-    - name: "PHASE 2/4: Dependency Validation"
-      block:
-        - name: Check required tools
-          command: "which {{ item }}"
-          loop: "{{ required_tools }}"
-          changed_when: false
-          
-        - name: Verify Python modules
-          pip:
-            name: "{{ required_python_modules }}"
-            state: present
-          check_mode: yes
-      tags: [always]
-      
-    # PHASE 3: Configuration Generation (2 minutes)
-    # Always runs - validates templates and logic
-    - name: "PHASE 3/4: Configuration Generation and Validation"
-      block:
-        - name: Generate configurations
-          include_role:
-            name: "{{ role_under_test }}"
-            tasks_from: generate_configs
-          vars:
-            dry_run: true
-            
-        - name: Validate generated configurations
-          include_tasks: validate_configs.yaml
-      tags: [always]
-      
-    # PHASE 4: Full Deployment Test (5-45 minutes)
-    # Always runs - this is the actual test
-    - name: "PHASE 4/4: Full Deployment Test"
-      block:
-        - name: Run complete role
-          include_role:
-            name: "{{ role_under_test }}"
-            
-        - name: Verify deployment success
-          include_tasks: verify_deployment.yaml
-          
-        - name: Mark test as complete
-          copy:
-            content: |
-              ✅ FULL TEST COMPLETED SUCCESSFULLY
-              Time: {{ ansible_date_time.iso8601 }}
-              All 4 phases passed
-            dest: /tmp/test-complete.marker
-      tags: [always]
-    
-    # FINAL: Display results
-    - name: Test Summary
-      debug:
-        msg: |
-          ✅ ALL TESTS PASSED
-          Phase 1: Validation     ✓
-          Phase 2: Dependencies   ✓
-          Phase 3: Configuration  ✓
-          Phase 4: Deployment     ✓
-          
-          This confirms the role will work in production.
+# .gitlab-ci.yml
+stages:
+  - syntax
+  - quick-integration  # < 10 min tests
+  - full-integration   # expensive tests
+  - cleanup
+
+variables:
+  VM_BACKEND: "libvirt"
+  CACHE_DIR: "/cache/vms"
+
+# Quick syntax validation
+syntax:validation:
+  stage: syntax
+  script:
+    - ansible-playbook site.yml --syntax-check
+    - yamllint collections/
+  tags:
+    - docker
+  except:
+    - schedules
+
+# Quick integration tests (run on every commit)
+test:networking:
+  stage: quick-integration
+  script:
+    - ./test-integration.sh --section networking --backend $VM_BACKEND
+  tags:
+    - kvm-enabled
+  artifacts:
+    when: on_failure
+    paths:
+      - tests/logs/
+    expire_in: 1 week
+
+test:storage:
+  stage: quick-integration
+  script:
+    - ./test-integration.sh --section storage --backend $VM_BACKEND
+  tags:
+    - kvm-enabled
+
+test:vyos:
+  stage: quick-integration
+  script:
+    - ./test-integration.sh --section vyos_config --backend $VM_BACKEND
+  tags:
+    - kvm-enabled
+    - nested-virt
+
+# Expensive tests (manual or scheduled)
+test:harvester:single:
+  stage: full-integration
+  script:
+    - ./test-integration.sh --section harvester_single --backend $VM_BACKEND
+  tags:
+    - kvm-enabled
+    - high-memory
+    - nested-virt
+  when: manual
+
+test:harvester:cluster:
+  stage: full-integration
+  script:
+    - ./test-integration.sh --section harvester_cluster --backend $VM_BACKEND
+  tags:
+    - kvm-enabled
+    - high-memory
+    - nested-virt
+    - extended-timeout
+  only:
+    - main
+    - merge_requests
+  when: manual
+
+# Nightly full test suite
+nightly:full:
+  stage: full-integration
+  script:
+    - ./test-integration.sh --all --backend $VM_BACKEND
+  tags:
+    - kvm-enabled
+    - high-memory
+    - nested-virt
+    - extended-timeout
+  only:
+    - schedules
 ```
 
-## Test Infrastructure Requirements
-
-### Use Real Infrastructure in Tests
-
-Instead of test mode flags, provide proper test infrastructure:
-
-1. **For VM-based tests**: 
-   - Use nested virtualization in containers
-   - Mount `/dev/kvm` for hardware acceleration
-   - Create real VMs with cached base images
-
-2. **For network tests**:
-   - Use Docker networks or network namespaces
-   - Create real bridges and VLANs
-   - Test actual packet flow
-
-3. **For storage tests**:
-   - Use loop devices or tmpfs
-   - Create real filesystems
-   - Test actual I/O operations
-
-4. **For API tests**:
-   - Run real services in containers
-   - Use actual authentication
-   - Test real API endpoints
-
-### Example: Proper Test Setup
+### Runner Requirements
 
 ```yaml
-# molecule.yaml - Provide real infrastructure
-platforms:
-  - name: test-node
-    image: ubuntu:24.04
-    privileged: true
+# Runner configuration requirements
+gitlab-runner-1:
+  executor: docker
+  docker:
+    privileged: true  # For nested virt
     volumes:
-      - /dev/kvm:/dev/kvm  # Real virtualization
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
-    capabilities:
-      - SYS_ADMIN
-      - NET_ADMIN  # Real networking
-
-# converge.yaml - Use real operations
-- name: Create real VM for testing
-  community.libvirt.virt:
-    name: test-vm
-    state: running
-    memory: 2048
-    vcpus: 2
-    disk_source: "{{ cached_base_image }}"
+      - /dev/kvm:/dev/kvm
+      - /cache:/cache  # VM image cache
+  tags:
+    - kvm-enabled
+    - nested-virt
+    - high-memory  # 32GB+
 ```
 
-## Image Building and Caching
+## VM Management Strategies
 
-### Build Strategy
+### Testing Infrastructure Options
 
-1. **Base Images**: Built once, cached for reuse
-2. **Test Instances**: Always use fresh linked clones
-3. **CI/CD**: Fresh VMs naturally force rebuilds
+| Approach | Pros | Cons | Use Case |
+|----------|------|------|----------|
+| **Vagrant + libvirt** | Mature, well-documented | Complex setup | Developer machines |
+| **Docker + KVM** | Fast, lightweight | Limited OS options | CI/CD pipelines |
+| **Pre-provisioned VMs** | Very fast | State management | Repeated testing |
+| **Cloud VMs** | Scalable | Cost, latency | Burst testing |
+| **Harvester itself** | Dogfooding | Complexity | Advanced testing |
 
-### Implementation
+### Recommended: Hybrid Approach
+
+1. **Local Development**: Vagrant + libvirt
+   - Easy to debug
+   - Full VM capabilities
+   - Good caching
+
+2. **CI/CD Pipeline**: Docker + nested KVM
+   - Fast provisioning
+   - Resource efficient
+   - Good isolation
+
+3. **Full Integration**: Dedicated VM pool
+   - Persistent test environment
+   - Snapshot/restore capability
+   - Real hardware characteristics
+
+## Anti-patterns to Avoid
+
+### ❌ DO NOT Create
 
 ```yaml
-# In tasks that use images
-- name: Check for cached base images
-  stat:
-    path: "{{ image_path }}"
-  register: image_exists
+# Bad: Mock mode flags
+harvester_test_mode: true
+skip_real_deployment: true
+use_mock_api: true
 
-- name: Build if needed
-  include_role:
-    name: image_builder
-  when: not image_exists.stat.exists or force_rebuild|default(false)
+# Bad: Different test behaviors
+when: not molecule_test_mode
 
-- name: Create test instance
-  command: >
-    qemu-img create -f qcow2 -F qcow2
-    -b {{ base_image }}
-    {{ test_instance }}
+# Bad: Fake services
+mock_harvester_api: true
 ```
 
-### Cache Behavior
+### ❌ DO NOT Test
 
-| Environment | Cache Status | Build Time | Behavior |
-|------------|--------------|------------|----------|
-| CI/CD (fresh VM) | Empty | 45 min | Full build from ISO |
-| Developer machine | Populated | 5 min | Uses cached images |
-| Force rebuild | Ignored | 45 min | Rebuilds everything |
+- Ansible module functionality (trust that `apt` works)
+- Mock infrastructure behavior
+- Syntax-only validation as "tests"
+- Configuration without deployment
 
-## Instructions for LLMs
+### ✅ DO Test
 
-### IMPORTANT RULES FOR AI ASSISTANTS:
+- Real network configuration
+- Actual service deployment
+- API integrations
+- Cluster formation
+- Storage operations
+- Service interactions
 
-1. **ALWAYS use the standard test command**:
-   ```bash
-   ./test-collection.sh test <role-name>
-   # Or for epyc collection:
-   ./test-collection.sh --collection epyc test <role-name>
-   ```
+## Implementation Priorities
 
-2. **NEVER create shortcuts**:
-   - No `--quick` or `--smoke` flags
-   - No separate validation-only tests
-   - No "fast" test alternatives
+### Phase 1: Foundation (Week 1-2)
+- [ ] Create `test-integration.sh` script
+- [ ] Setup basic VM provisioning (Vagrant)
+- [ ] Implement networking section test
+- [ ] Implement storage section test
+- [ ] Create validation script framework
 
-3. **ALWAYS wait for completion marker**:
-   - Look for "✅ FULL TEST COMPLETED SUCCESSFULLY"
-   - All 4 phases must complete
-   - Partial completion = test failed
+### Phase 2: CI/CD Integration (Week 3-4)
+- [ ] Setup GitLab runners with KVM
+- [ ] Implement pipeline configuration
+- [ ] Add artifact collection
+- [ ] Setup VM image caching
+- [ ] Create dashboard for test results
 
-4. **When tests fail**:
-   - Run the SAME command again after fixes
-   - Do NOT create a "simpler" test
-   - Do NOT skip to later phases
+### Phase 3: Advanced Testing (Week 5-6)
+- [ ] Harvester single-node tests
+- [ ] Harvester cluster tests
+- [ ] VyOS configuration tests
+- [ ] TrueNAS integration tests
+- [ ] Performance benchmarks
 
-5. **Test duration expectations**:
-   - First run: ~45 minutes (builds images)
-   - Subsequent: ~5-10 minutes (uses cache)
-   - This is NORMAL and REQUIRED
+### Phase 4: Optimization (Ongoing)
+- [ ] Parallel test execution
+- [ ] Smart test selection (changed components)
+- [ ] Test result caching
+- [ ] Failure analysis automation
 
-## Example: Correct LLM Response
+## Success Metrics
 
-```markdown
-I'll test the harvester_setup role:
+| Metric | Target | Current |
+|--------|--------|---------|
+| Quick test runtime | < 10 min | - |
+| Full test runtime | < 60 min | - |
+| Test reliability | > 95% | - |
+| False positive rate | < 2% | - |
+| Developer feedback time | < 15 min | - |
+| Resource usage | < 32GB RAM | - |
 
-$ ./test-collection.sh --collection epyc test harvester.setup
+## Instructions for AI Assistants
 
-PHASE 1/4: Syntax and Variable Validation... ✓
-PHASE 2/4: Dependency Validation... ✓  
-PHASE 3/4: Configuration Generation... ✓
-PHASE 4/4: Full Deployment Test... ✓
+### When Creating Tests
 
-✅ FULL TEST COMPLETED SUCCESSFULLY
+1. **Start with integration tests**, not unit tests
+2. **Use real infrastructure** in tests (VMs, networks, storage)
+3. **Write validation scripts** that check actual functionality
+4. **Never create mock mode flags** or test-only behaviors
+5. **Always run full tests** - no shortcuts or smoke tests
 
-All phases passed. The role is ready for production deployment.
+### When Running Tests
+
+```bash
+# For quick feedback (networking, storage, etc)
+./test-integration.sh --section networking
+
+# For full validation (before PR)
+./test-integration.sh --all
+
+# Never create or use:
+# ❌ ./test-quick.sh
+# ❌ ./test-smoke.sh
+# ❌ --skip-validation
+# ❌ --mock-mode
 ```
 
-## Example: Incorrect LLM Response
+### Expected Test Output
 
-```markdown
-❌ "I'll create a quick test to validate the syntax..."
-❌ "Running smoke test to save time..."
-❌ "The validation passed, so the feature works!"
-❌ "I'll skip the full deployment to test faster..."
 ```
+=== INTEGRATION TEST: networking ===
+[1/4] Provisioning test VM... ✓
+[2/4] Applying configuration... ✓
+[3/4] Running validation... ✓
+[4/4] Cleanup... ✓
 
-## Enforcement
+✅ SECTION PASSED: networking (4m 32s)
 
-To ensure compliance:
-
-1. **Single test entrypoint** - No alternative commands
-2. **Sequential phases** - Can't skip ahead
-3. **Clear failure messages** - Explain what wasn't tested
-4. **Completion markers** - Obvious when fully done
-
-## Component-Specific Examples
-
-### VyOS Router
-```yaml
-Phase 1: Validate VLAN configs, IP ranges
-Phase 2: Check vyos-tools, SSH access
-Phase 3: Generate firewall rules, verify syntax
-Phase 4: Deploy to VyOS VM, test routing
-```
-
-### TrueNAS Storage
-```yaml
-Phase 1: Validate pool configs, share definitions
-Phase 2: Check TrueNAS API access, zfs tools
-Phase 3: Generate dataset configs, validate quotas
-Phase 4: Create pools, test NFS/SMB access
-```
-
-### ArgoCD GitOps
-```yaml
-Phase 1: Validate repo URLs, app definitions
-Phase 2: Check kubectl, helm, git access
-Phase 3: Generate manifests, lint YAML
-Phase 4: Deploy apps, verify sync status
+Real checks performed:
+- Bond interface active
+- VLANs configured
+- Connectivity verified
+- Services running
 ```
 
 ## Summary
 
-- **Universal approach**: Same pattern for ALL components
-- **One test path**: `./test-collection.sh test <name>`
-- **Four mandatory phases**: All must pass
-- **No shortcuts**: Full test or nothing
-- **Clear markers**: Know when testing is complete
-- **Cache friendly**: Fast for developers, fresh for CI
+This testing strategy:
+- **Rejects unit testing of infrastructure** - embraces integration testing
+- **Uses real infrastructure** - VMs, networks, actual services
+- **Provides sectioned testing** - focused, fast feedback
+- **Scales from local to CI/CD** - same tests everywhere
+- **Prevents shortcut abuse** - one path, real validation
+- **Optimizes for confidence** - what passes will work in production
 
-This strategy ensures:
-1. LLMs cannot take shortcuts while still providing fast feedback
-2. Consistent testing across all infrastructure components
-3. Confidence that what works in test will work in production
+The goal: **Deploy once, work first time** through comprehensive integration testing with real infrastructure components.
