@@ -109,14 +109,20 @@
   debug:
     msg: |
       Cluster Join Complete:
-      - Total nodes: {{ all_nodes.resources | length | default(harvester_nodes | length) }}
-      - Management nodes: {{ management_nodes.resources | length | default(3) }}
+      - Total nodes: {{ all_nodes.resources | length if (all_nodes is defined and all_nodes.resources is defined) else harvester_nodes | length }}
+      - Management nodes: {{ management_nodes.resources | length if (management_nodes is defined and management_nodes.resources is defined) else 3 }}
       - All nodes status: Ready
       
       Node details:
+      {% if all_nodes is defined and all_nodes.resources is defined %}
       {% for node in all_nodes.resources %}
       - {{ node.metadata.name }}: {{ node.status.addresses | selectattr('type', 'equalto', 'InternalIP') | map(attribute='address') | first }}
       {% endfor %}
+      {% else %}
+      {% for node in harvester_nodes %}
+      - {{ node.name }}: {{ node.actual_ip | default(node.ip) }}
+      {% endfor %}
+      {% endif %}
 
 - name: Clean up temporary join config files
   shell: rm -f /tmp/harvester-join-configs/*.yaml

@@ -1,0 +1,98 @@
+---
+# Simple test for Harvester setup role - tests core functionality without SSH delegation
+
+- name: Simple Converge Test
+  hosts: all
+  gather_facts: yes
+  become: true
+  
+  vars:
+    # Test configuration
+    harvester_nodes:
+      - name: "test-harvester-1"
+        ip: "10.60.1.11"
+        actual_ip: "10.60.1.11"
+        is_first: true
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:01"
+        pcie_devices: ["10de:1fb9", "10de:10fa"]
+      - name: "test-harvester-2"
+        ip: "10.60.1.12"
+        actual_ip: "10.60.1.12"
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:02"
+      - name: "test-harvester-3"
+        ip: "10.60.1.13"
+        actual_ip: "10.60.1.13"
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:03"
+    
+    # Required for role
+    harvester_infisical_client_id: "test-client-id"
+    harvester_infisical_client_secret: "test-client-secret"
+    harvester_infisical_project_id: "test-project-id"
+    harvester_kubeconfig_path: "/tmp/test-harvester-kubeconfig"
+    harvester_terraform_test_dir: "/tmp/harvester-terraform-test"
+    
+    # Storage network configuration
+    harvester_storage_network:
+      enabled: true
+      vlan: 65
+      cidr: "10.60.65.0/24"
+      ip_range_start: "10.60.65.10"
+      ip_range_end: "10.60.65.250"
+    
+    # DNS servers
+    harvester_dns_servers:
+      - "10.60.0.1"
+      - "1.1.1.1"
+    
+    # Test mode flag
+    harvester_test_mode: true
+    
+  tasks:
+    - name: "Test Basic Functionality"
+      block:
+        - name: Create test directories
+          file:
+            path: "{{ item }}"
+            state: directory
+            mode: '0755'
+          loop:
+            - /oem
+            - /tmp/harvester-configs
+            - /tmp/harvester-network-configs
+        
+        - name: Test template generation
+          template:
+            src: "{{ playbook_dir }}/../../roles/harvester.setup/templates/network_config.yaml.j2"
+            dest: "/tmp/test-network-{{ inventory_hostname }}.yaml"
+            mode: '0644'
+          vars:
+            item:
+              name: "{{ inventory_hostname }}"
+              ip: "{{ harvester_node_ip | default('10.60.1.11') }}"
+              actual_ip: "{{ harvester_node_ip | default('10.60.1.11') }}"
+              interfaces:
+                - name: "eth0"
+                  hwaddr: "aa:bb:cc:dd:ee:01"
+        
+        - name: Install Python dependencies
+          pip:
+            name:
+              - kubernetes
+              - netaddr
+            state: present
+          delegate_to: localhost
+          become: no
+        
+        - name: Run harvester.setup role
+          include_role:
+            name: harvester.setup
+        
+        - name: Verify results
+          debug:
+            msg: "Harvester setup role completed successfully in test mode"

@@ -162,6 +162,12 @@ run_single_test() {
     local command="${2:-test}"
     local collection="${3:-$DEFAULT_COLLECTION}"
     
+    # Set up module path for vagrant if molecule-vagrant is installed
+    if python -c "import molecule_plugins.vagrant" 2>/dev/null; then
+        VAGRANT_MODULE_PATH=$(python -c "import os; import molecule_plugins.vagrant; print(os.path.dirname(molecule_plugins.vagrant.__file__) + '/modules')")
+        export ANSIBLE_LIBRARY="${ANSIBLE_LIBRARY:+$ANSIBLE_LIBRARY:}$VAGRANT_MODULE_PATH"
+    fi
+    
     local molecule_args=""
     if [ "$DEBUG_MODE" = true ]; then
         molecule_args="--debug"
@@ -173,6 +179,9 @@ run_single_test() {
             ;;
         syntax)
             $MOLECULE_BIN syntax $molecule_args -s "$scenario"
+            ;;
+        create)
+            $MOLECULE_BIN create $molecule_args -s "$scenario"
             ;;
         converge)
             $MOLECULE_BIN converge $molecule_args -s "$scenario"
@@ -219,6 +228,7 @@ while [[ $# -gt 0 ]]; do
             echo "  list              List all available scenarios"
             echo "  test <scenario>   Run full test suite for a scenario"
             echo "  syntax <scenario> Run syntax check only"
+            echo "  create <scenario> Create test instances"
             echo "  converge <scenario> Create and configure test instances"
             echo "  verify <scenario> Run verification tests"
             echo "  destroy <scenario> Destroy test instances"
@@ -336,7 +346,7 @@ case "$COMMAND" in
             $MOLECULE_BIN list
         fi
         ;;
-    test|syntax|converge|verify|destroy)
+    test|syntax|create|converge|verify|destroy)
         if [ -z "$SCENARIO" ]; then
             print_error "Please specify a scenario name for $COMMAND"
             print_info "Usage: $0 $COMMAND <scenario-name>"
@@ -355,6 +365,7 @@ case "$COMMAND" in
         echo "  list              List all available scenarios"
         echo "  test <scenario>   Run full test suite for a scenario"
         echo "  syntax <scenario> Run syntax check only"
+        echo "  create <scenario> Create test instances"
         echo "  converge <scenario> Create and configure test instances"
         echo "  verify <scenario> Run verification tests"
         echo "  destroy <scenario> Destroy test instances"

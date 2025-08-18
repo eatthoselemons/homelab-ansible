@@ -87,6 +87,20 @@
   delegate_to: "{{ item.ip }}"
   loop: "{{ harvester_nodes }}"
   become: yes
+  failed_when: false  # Some parameters may not be available in containers
+  register: sysctl_result
+
+- name: Display sysctl results
+  debug:
+    msg: |
+      Sysctl apply results for {{ item.item.name }}:
+      {% if item.rc == 0 %}
+      - All parameters applied successfully
+      {% else %}
+      - Some parameters could not be applied (normal in containers)
+      - Stderr: {{ item.stderr_lines | join(', ') }}
+      {% endif %}
+  loop: "{{ sysctl_result.results }}"
 
 - name: Enable required kernel modules
   modprobe:

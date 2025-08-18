@@ -1,0 +1,70 @@
+---
+# Quick smoke test - validates syntax and basic functionality only
+- name: Quick Converge Test
+  hosts: all
+  gather_facts: yes
+  become: true
+  
+  vars:
+    # Minimal test configuration
+    harvester_nodes:
+      - name: "test-harvester-1"
+        ip: "test-harvester-quick"
+        actual_ip: "10.60.1.11"
+        is_first: true
+        interfaces:
+          - name: "eth0"
+            hwaddr: "aa:bb:cc:dd:ee:01"
+    
+    # Required variables
+    harvester_infisical_client_id: "test-client-id"
+    harvester_infisical_client_secret: "test-client-secret"
+    harvester_infisical_project_id: "test-project-id"
+    harvester_kubeconfig_path: "/tmp/test-harvester-kubeconfig"
+    harvester_cluster_vip: "10.60.1.10"
+    harvester_cluster_name: "test-harvester-cluster"
+    harvester_install_device: "/dev/sda"
+    harvester_ntp_servers: ["10.60.0.2"]
+    harvester_dns_servers: ["10.60.0.1", "1.1.1.1"]
+    
+    # Test values
+    harvester_cluster_token: "test-cluster-token-12345"
+    harvester_admin_password: "test-admin-password"
+    harvester_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2E test@harvester"
+    
+    # Enable test mode
+    harvester_test_mode: true
+    
+    # Skip optional features for quick test
+    harvester_storage_network:
+      enabled: false
+  
+  tasks:
+    - name: Phase 1 - Validate variables
+      assert:
+        that:
+          - harvester_nodes is defined
+          - harvester_nodes | length >= 1
+          - harvester_infisical_client_id is defined
+        fail_msg: "Required variables not defined"
+    
+    - name: Phase 2 - Test template generation
+      template:
+        src: "/home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles/harvester.setup/templates/network_config.yaml.j2"
+        dest: "/tmp/test-network-config.yaml"
+      delegate_to: localhost
+      become: no
+    
+    - name: Phase 3 - Quick role execution
+      include_role:
+        name: harvester.setup
+        tasks_from: "{{ item }}"
+      loop:
+        - validate_prerequisites.yaml
+        - configure_networks.yaml
+      vars:
+        ansible_delegated_vars_hack: true
+    
+    - name: Test complete
+      debug:
+        msg: "✓ Quick smoke test passed - Role syntax and basic functionality verified"

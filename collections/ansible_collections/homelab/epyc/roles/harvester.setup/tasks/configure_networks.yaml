@@ -53,7 +53,7 @@
 - name: Assert network configurations are in place
   assert:
     that:
-      - (item.stat.exists and item.stat.size > 0)
+      - item.stat.exists and item.stat.size > 0
     fail_msg: "Network configuration missing on {{ item.item.name }}"
     success_msg: "Network configuration applied to {{ item.item.name }}"
   loop: "{{ network_config_check.results | default([]) }}"

@@ -28,6 +28,10 @@
 
 # Retrieve secrets from Infisical
 - name: Retrieve Harvester secrets from Infisical
+  when: 
+    - harvester_cluster_token is not defined or harvester_cluster_token | length == 0
+    - harvester_admin_password is not defined or harvester_admin_password | length == 0
+    - harvester_ansible_ssh_key is not defined or harvester_ansible_ssh_key | length == 0
   block:
     - name: Get cluster token from Infisical
       set_fact:
@@ -98,20 +102,15 @@
         fail_msg: "harvesterAnsibleSSHKey secret is empty in Infisical"
         success_msg: "SSH key retrieved successfully"
 
-# Set test values if in test mode
-- name: Set test values
-  block:
-    - name: Set test cluster token
-      set_fact:
-        harvester_cluster_token: "test-cluster-token-12345"
-    
-    - name: Set test admin password
-      set_fact:
-        harvester_admin_password: "TestPassword123!"
-    
-    - name: Set test SSH key
-      set_fact:
-        harvester_ansible_ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@example.com"
+# Validate required secrets are available
+- name: Validate required secrets
+  assert:
+    that:
+      - harvester_cluster_token is defined and harvester_cluster_token | length > 0
+      - harvester_admin_password is defined and harvester_admin_password | length > 0  
+      - harvester_ansible_ssh_key is defined and harvester_ansible_ssh_key | length > 0
+    fail_msg: "Required secrets are not available. Either set them directly or configure Infisical credentials."
+    success_msg: "All required secrets are available"
 
 # Include sub-tasks
 - name: Validate prerequisites

@@ -1,0 +1,47 @@
+---
+# Quick smoke test for harvester.setup role
+# This runs basic validation without full deployment
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: test-harvester-quick
+    image: "${MOLECULE_DOCKER_IMAGE:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    pre_build_image: true
+    command: "${MOLECULE_COMMAND:-/lib/systemd/systemd}"
+    privileged: true
+    groups:
+      - harvester
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      collections_paths: /home/user/IdeaProjects/homelab-ansible/collections
+      roles_path: /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles
+      host_key_checking: false
+  env:
+    ANSIBLE_COLLECTIONS_PATH: /home/user/IdeaProjects/homelab-ansible/collections:/home/user/.ansible/collections
+    ANSIBLE_ROLES_PATH: /home/user/IdeaProjects/homelab-ansible/collections/ansible_collections/homelab/epyc/roles:/home/user/.ansible/roles
+    ANSIBLE_HOST_KEY_CHECKING: false
+  inventory:
+    host_vars:
+      test-harvester-quick:
+        ansible_user: root
+        ansible_become: false
+  playbooks:
+    converge: converge-quick.yml
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup  
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
