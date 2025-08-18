@@ -375,27 +375,27 @@ run_validation() {
     local section=$1
     log_info "Running validation for section: $section"
     
-    local validate_script=$(python3 -c "
-import yaml
-with open('$CONFIG_FILE', 'r') as f:
-    config = yaml.safe_load(f)
-    print(config['sections'].get('$section', {}).get('validate_script', ''))")
-    
-    if [[ -z "$validate_script" ]]; then
-        log_warning "No validation script defined for section: $section"
-        return 0
+    # Check if Python test dependencies are installed
+    if ! python3 -c "import pytest; import testinfra" &> /dev/null; then
+        log_warning "Python test dependencies not installed"
+        log_info "Installing test dependencies..."
+        pip3 install -r "${TESTS_DIR}/requirements.txt" --user
     fi
     
-    local script_path="${TESTS_DIR}/${validate_script}"
+    # Run Python-based validation using pytest and testinfra
+    local test_runner="${TESTS_DIR}/run-integration-tests.py"
     
-    if [[ ! -f "$script_path" ]]; then
-        log_warning "Validation script not found: $script_path"
-        log_info "Creating placeholder validation script..."
-        create_placeholder_validation "$section" "$script_path"
+    if [[ ! -f "$test_runner" ]]; then
+        log_error "Test runner not found: $test_runner"
+        return 1
     fi
     
-    # Run validation
-    bash "$script_path" "${INVENTORY_DIR}/${section}.ini" 2>&1 | tee -a "$LOG_FILE"
+    # Run validation with pytest
+    python3 "$test_runner" \
+        --section "$section" \
+        --inventory "${INVENTORY_DIR}/${section}.ini" \
+        --timeout 120 \
+        2>&1 | tee -a "$LOG_FILE"
     
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         log_error "Validation failed"
