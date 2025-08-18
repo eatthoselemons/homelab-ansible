@@ -311,7 +311,7 @@ gitlab-runner-harvester:
   # Runner runs as VM inside Harvester
   # Uses Harvester API to provision test VMs dynamically
   environment:
-    - HARVESTER_URL=https://harvester.homelab.local
+    - HARVESTER_URL=https://harvester.management.awynn.in
     - HARVESTER_NAMESPACE=gitlab-ci
   tags:
     - harvester
