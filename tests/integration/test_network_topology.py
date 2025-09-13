@@ -7,24 +7,34 @@ import pytest
 import re
 
 
+@pytest.mark.network
 class TestNetworkTopology:
     """Test overall network topology is correct."""
     
-    def test_router_connectivity(self, host):
+    @pytest.mark.critical
+    def test_router_connectivity(self, host, device_ips, network_params):
         """Test connectivity to VyOS router."""
         # Router should be reachable at gateway addresses
-        router_ips = [
-            "10.10.0.1",  # Management VLAN gateway
-            "10.20.0.1",  # Private VLAN gateway
-        ]
+        router_ip = device_ips.get('vyos_router', {}).get('primary_ip', '10.10.0.1')
+        timeout = network_params.get('ping_timeout', 2)
+        count = network_params.get('ping_count', 2)
+        
+        # Also test additional gateways
+        router_ips = [router_ip]
+        # Add Private VLAN gateway as secondary test
+        if router_ip != "10.20.0.1":
+            router_ips.append("10.20.0.1")
         
         reachable = []
-        for router_ip in router_ips:
-            ping_cmd = host.run(f"ping -c 2 -W 2 {router_ip}")
+        errors = []
+        for ip in router_ips:
+            ping_cmd = host.run(f"ping -c {count} -W {timeout} {ip}")
             if ping_cmd.rc == 0:
-                reachable.append(router_ip)
+                reachable.append(ip)
+            else:
+                errors.append(f"{ip}: {ping_cmd.stderr or 'unreachable'}")
         
-        assert len(reachable) > 0, f"Cannot reach router at any gateway IP: {router_ips}"
+        assert len(reachable) > 0, f"Cannot reach router. Tried: {router_ips}. Errors: {errors}"
     
     def test_critical_network_paths(self, host):
         """Test critical network paths are functional."""

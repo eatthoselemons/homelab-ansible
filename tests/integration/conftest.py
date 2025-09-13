@@ -21,6 +21,12 @@ def pytest_addoption(parser):
         action="store",
         help="Test section to run"
     )
+    parser.addoption(
+        "--config",
+        action="store",
+        default="test_config.yaml",
+        help="Path to test configuration file"
+    )
 
 
 @pytest.fixture(scope="session")
@@ -52,24 +58,44 @@ def test_section(request):
 
 
 @pytest.fixture(scope="session")
-def test_config():
-    """Load test configuration."""
-    config_file = Path("test-integration-config.yaml")
-    if config_file.exists():
-        with open(config_file) as f:
-            return yaml.safe_load(f)
+def test_config(request):
+    """Load test configuration from centralized config file."""
+    config_path = request.config.getoption("--config")
+    if not config_path:
+        config_path = "test_config.yaml"
+    
+    # Try to find config file
+    possible_paths = [
+        Path(config_path),
+        Path(__file__).parent / config_path,
+        Path("tests/integration") / config_path,
+    ]
+    
+    for path in possible_paths:
+        if path.exists():
+            with open(path) as f:
+                return yaml.safe_load(f)
+    
+    # Return empty config if nothing found
+    pytest.warn(f"No test configuration file found at {config_path}")
     return {}
 
 
 @pytest.fixture
-def expected_vlans():
+def expected_vlans(test_config):
     """VLANs that should be configured."""
+    if test_config and 'networks' in test_config:
+        return [net['vlan'] for net in test_config['networks'].values()]
+    # Fallback to hardcoded values
     return [10, 20, 30, 40, 50, 60, 70, 80, 90]
 
 
 @pytest.fixture
-def expected_networks():
+def expected_networks(test_config):
     """Network configuration expectations."""
+    if test_config and 'networks' in test_config:
+        return test_config['networks']
+    # Fallback to hardcoded values
     return {
         "management": {
             "vlan": 10,
@@ -100,6 +126,53 @@ def expected_networks():
             "vlan": 90,
             "subnet": "10.90.0.0/16",
             "gateway": "10.90.0.1"
+        }
+    }
+
+
+@pytest.fixture
+def network_params(test_config):
+    """Network test parameters."""
+    if test_config and 'test_parameters' in test_config:
+        return test_config['test_parameters'].get('network', {})
+    return {
+        'ping_timeout': 2,
+        'ping_count': 2,
+        'curl_timeout': 5,
+        'max_latency_local': 5.0,
+        'max_latency_internet': 100.0
+    }
+
+
+@pytest.fixture
+def security_params(test_config):
+    """Security test parameters."""
+    if test_config and 'test_parameters' in test_config:
+        return test_config['test_parameters'].get('security', {})
+    return {
+        'max_ssh_auth_tries': 3,
+        'required_tls_version': '1.2',
+        'forbidden_ports': [
+            {'port': 23, 'service': 'telnet'},
+            {'port': 21, 'service': 'ftp'},
+            {'port': 139, 'service': 'netbios'},
+            {'port': 445, 'service': 'smb'},
+            {'port': 111, 'service': 'rpcbind'}
+        ]
+    }
+
+
+@pytest.fixture
+def device_ips(test_config):
+    """Infrastructure device IPs."""
+    if test_config and 'devices' in test_config:
+        return test_config['devices']
+    return {
+        'vyos_router': {'primary_ip': '10.10.0.1'},
+        'switches': {
+            'main': {'ip': '10.10.0.2'},
+            'basement': {'ip': '10.10.0.3'},
+            'rack': {'ip': '10.10.0.4'}
         }
     }
 
