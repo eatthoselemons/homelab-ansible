@@ -1,0 +1,59 @@
+# Integration test configuration
+# See docs/llms/design/testing-strategy.md for details
+
+test_defaults:
+  vm_backend: libvirt
+  base_image: ubuntu-24.04-cloud
+  cleanup: true
+  parallel_execution: false
+
+sections:
+  networking:
+    description: "Network bonds, VLANs, bridges"
+    playbook: site.yml
+    tags: [networking]
+    inventory: test-inventory/networking
+    validate_script: validation/validate-networking.sh
+    required_vms: 1
+    estimated_time: "5 minutes"
+    requires_nested_virt: false
+    
+  storage:
+    description: "LVM, filesystem, mounts"
+    playbook: site.yml
+    tags: [storage]
+    inventory: test-inventory/storage
+    validate_script: validation/validate-storage.sh
+    required_vms: 1
+    estimated_time: "5 minutes"
+    requires_nested_virt: false
+    
+  vyos_config:
+    description: "VyOS router configuration"
+    playbook: site.yml
+    tags: [vyos]
+    inventory: test-inventory/vyos
+    validate_script: validation/validate-vyos.sh
+    required_vms: 1
+    estimated_time: "10 minutes"
+    requires_nested_virt: true
+    
+  harvester_single:
+    description: "Single node Harvester setup"
+    playbook: site.yml
+    tags: [harvester]
+    inventory: test-inventory/single-node
+    validate_script: validation/validate-harvester-single.sh
+    required_vms: 1
+    estimated_time: "15 minutes"
+    requires_nested_virt: true
+    
+  harvester_cluster:
+    description: "3-node Harvester cluster"
+    playbook: site.yml
+    tags: [harvester]
+    inventory: test-inventory/cluster
+    validate_script: validation/validate-harvester-cluster.sh
+    required_vms: 3
+    estimated_time: "30 minutes"
+    requires_nested_virt: true

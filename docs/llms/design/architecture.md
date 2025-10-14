@@ -21,14 +21,45 @@ Internet -> Modem -> Nexus:Port1(WAN) -> VyOS VM
 ```
 
 ### VLAN Design
-- **VLAN 1**: Unused
-- **VLAN 10**: DMZ (external-facing services, no internal access)
-- **VLAN 20**: Untrusted WiFi (guest access, isolated)
-- **VLAN 30**: Trusted WiFi (personal devices, limited secure access)
-- **VLAN 40**: IoT (isolated, no inter-network access)
-- **VLAN 50**: Secure (main network, VPN endpoint)
-- **VLAN 60**: Management (server administration, jump-host access only)
-- **VLAN 70**: Log Aggregation (no internet access, service-to-monitoring only)
+
+**Note**: See `/docs/llms/design/network-standards.md` for complete network addressing and domain conventions.
+
+- **VLAN 10**: Management (10.10.0.0/16, `*.management.awynn.in`)
+  - Infrastructure management interfaces
+  - IPMI/BMC access
+  - Jump-host access only
+  
+- **VLAN 20**: Private/Secure (10.20.0.0/16, `*.private.awynn.in`)
+  - Internal services
+  - Main network, VPN endpoint
+  - Developer tools (GitLab, Rancher, etc.)
+  
+- **VLAN 30**: Public/DMZ (10.30.0.0/16, `*.public.awynn.in`)
+  - External-facing services
+  - No internal network access
+  - 65,534 usable IPs
+  
+- **VLAN 40**: Storage (10.40.0.0/16)
+  - NFS/iSCSI traffic
+  - Dedicated storage network
+  
+- **VLAN 50**: Backup (10.50.0.0/16)
+  - Backup replication traffic
+  - Isolated from production
+
+- **VLAN 60**: Guest WiFi (10.60.0.0/16)
+  - Guest access, isolated
+
+- **VLAN 70**: Trusted WiFi (10.70.0.0/16)
+  - Personal devices, limited secure access
+
+- **VLAN 80**: IoT (10.80.0.0/16)
+  - IoT devices, isolated, no inter-network access
+
+- **VLAN 90**: Logs/Monitoring (10.90.0.0/16, `*.logs.awynn.in`)
+  - Logging and monitoring stack
+  - Prometheus, Grafana, Loki, Elastic
+  - Isolated from internet, service-to-monitoring only
 
 ### Service Architecture
 

@@ -1,0 +1,153 @@
+# Integration Test Configuration
+# Centralized configuration for all integration tests
+
+# Network configuration matching the homelab network standards
+networks:
+  management:
+    vlan: 10
+    subnet: "10.10.0.0/16"
+    gateway: "10.10.0.1"
+    description: "Management network for infrastructure"
+    
+  private:
+    vlan: 20
+    subnet: "10.20.0.0/16"
+    gateway: "10.20.0.1"
+    description: "Private internal network"
+    
+  public:
+    vlan: 30
+    subnet: "10.30.0.0/16"
+    gateway: "10.30.0.1"
+    description: "Public/DMZ network"
+    
+  storage:
+    vlan: 40
+    subnet: "10.40.0.0/16"
+    gateway: "10.40.0.1"
+    description: "Storage network for NAS/SAN"
+    
+  backup:
+    vlan: 50
+    subnet: "10.50.0.0/16"
+    gateway: "10.50.0.1"
+    description: "Backup network"
+    
+  guest:
+    vlan: 60
+    subnet: "10.60.0.0/16"
+    gateway: "10.60.0.1"
+    description: "Guest WiFi network"
+    
+  trusted:
+    vlan: 70
+    subnet: "10.70.0.0/16"
+    gateway: "10.70.0.1"
+    description: "Trusted WiFi network"
+    
+  iot:
+    vlan: 80
+    subnet: "10.80.0.0/16"
+    gateway: "10.80.0.1"
+    description: "IoT device network"
+    
+  logs:
+    vlan: 90
+    subnet: "10.90.0.0/16"
+    gateway: "10.90.0.1"
+    description: "Logging and monitoring network"
+
+# Infrastructure devices
+devices:
+  vyos_router:
+    primary_ip: "10.10.0.1"
+    hostname: "vyos-router"
+    
+  switches:
+    main:
+      ip: "10.10.0.2"
+      hostname: "mikrotik-main"
+    basement:
+      ip: "10.10.0.3"
+      hostname: "mikrotik-basement"
+    rack:
+      ip: "10.10.0.4"
+      hostname: "mikrotik-rack"
+      
+  harvester:
+    cluster_vip: "10.60.1.10"
+    nodes:
+      - ip: "10.60.1.11"
+        hostname: "harvester-node1"
+      - ip: "10.60.1.12"
+        hostname: "harvester-node2"
+      - ip: "10.60.1.13"
+        hostname: "harvester-node3"
+
+# Test parameters
+test_parameters:
+  network:
+    ping_timeout: 2  # seconds
+    ping_count: 2
+    curl_timeout: 5  # seconds
+    max_latency_local: 5.0  # ms
+    max_latency_internet: 100.0  # ms
+    
+  disk:
+    warning_threshold: 80  # percent
+    critical_threshold: 90  # percent
+    min_free_space_gb: 20
+    
+  security:
+    max_ssh_auth_tries: 3
+    required_tls_version: "1.2"
+    forbidden_ports:
+      - port: 23
+        service: "telnet"
+      - port: 21
+        service: "ftp"
+      - port: 139
+        service: "netbios"
+      - port: 445
+        service: "smb"
+      - port: 111
+        service: "rpcbind"
+        
+  performance:
+    min_mtu: 1500
+    max_mtu: 9000
+    min_cpu_cores: 2
+    min_memory_gb: 4
+    recommended_cpu_cores: 4
+    recommended_memory_gb: 8
+
+# DNS configuration
+dns:
+  internal_domains:
+    - "harvester.management.awynn.in"
+    - "gitlab.private.awynn.in"
+    - "grafana.logs.awynn.in"
+  external_domains:
+    - "google.com"
+    - "cloudflare.com"
+    - "github.com"
+  search_domains:
+    - "awynn.in"
+    - "management.awynn.in"
+    - "private.awynn.in"
+
+# Service ports
+service_ports:
+  ssh: 22
+  http: 80
+  https: 443
+  dns: 53
+  ntp: 123
+  snmp: 161
+  dhcp_server: 67
+  dhcp_client: 68
+  mikrotik_api: 8728
+  mikrotik_api_ssl: 8729
+  kubernetes_api: 6443
+  rke2_supervisor: 9345
+  wireguard: 51820

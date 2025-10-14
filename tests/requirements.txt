@@ -1,0 +1,8 @@
+# Testing requirements for integration tests
+pytest>=7.0.0
+pytest-testinfra>=10.0.0
+pytest-xdist>=3.0.0  # For parallel test execution
+pytest-timeout>=2.0.0  # For test timeouts
+pytest-html>=3.0.0  # For HTML reports
+pyyaml>=6.0
+paramiko>=3.0.0  # SSH connections for testinfra
