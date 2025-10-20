@@ -1,0 +1,40 @@
+{
+  "name": "homelab-test-cli",
+  "version": "0.1.0",
+  "description": "Homelab infrastructure testing CLI using effect-testinfra",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "homelab-test": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "dev": "tsx src/cli/index.ts"
+  },
+  "dependencies": {
+    "effect": "^3.7.0",
+    "@effect/schema": "^0.72.0",
+    "@effect/platform": "^0.63.0",
+    "@effect/platform-node": "^0.58.0",
+    "@effect/cli": "^0.44.0",
+    "effect-testinfra": "workspace:*",
+    "yaml": "^2.4.0",
+    "vitest": "^1.2.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.9.0",
+    "@types/node": "^20.11.0",
+    "@types/yaml": "^2.4.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
