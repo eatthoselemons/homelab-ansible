@@ -4,6 +4,7 @@ import { Command } from "./Command.js"
 import { ExitCode } from "./ExitCode.js"
 import { Stdout } from "./Stdout.js"
 import { Stderr } from "./Stderr.js"
+import { CommandError } from "../errors/CommandError.js"
 
 /**
  * CommandResult - Rich result from command execution
@@ -34,13 +35,13 @@ export namespace CommandResult {
     !Stderr.isEmpty(result.stderr)
   
   // Effect actions
-  export const expectSuccess = (result: CommandResult): Effect.Effect<CommandResult, Error> =>
+  export const expectSuccess = (result: CommandResult): Effect.Effect<CommandResult, CommandError> =>
     succeeded(result)
       ? Effect.succeed(result)
       : Effect.fail(
-          new Error(
-            `Command failed with exit code ${result.exitCode}: ${result.command.value}\n` +
-            `stderr: ${result.stderr}`
-          )
+          new CommandError({
+            command: result.command,
+            message: `Command failed with exit code ${result.exitCode}: ${result.stderr}`
+          })
         )
 }
