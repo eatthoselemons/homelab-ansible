@@ -8,6 +8,10 @@
 // Domain models
 export * from "./domain/Host.js"
 export * from "./domain/Command.js"
+export * from "./domain/CommandResult.js"
+export * from "./domain/ExitCode.js"
+export * from "./domain/Stdout.js"
+export * from "./domain/Stderr.js"
 export * from "./domain/NetworkInterface.js"
 export * from "./domain/File.js"
 export * from "./domain/Service.js"

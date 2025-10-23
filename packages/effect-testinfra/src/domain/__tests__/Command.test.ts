@@ -1,6 +1,10 @@
 import { describe, it, expect } from "@effect/vitest"
 import { Effect } from "effect"
-import { Command, ExitCode, Stdout, Stderr } from "../Command.js"
+import { Command } from "../Command.js"
+import { ExitCode } from "../ExitCode.js"
+import { Stdout } from "../Stdout.js"
+import { Stderr } from "../Stderr.js"
+import { CommandResult } from "../CommandResult.js"
 
 describe("Command Domain", () => {
   it.effect("Command.make creates valid command", () =>
@@ -17,7 +21,7 @@ describe("Command Domain", () => {
       const cmd1 = Command.make("cat /etc/hosts")
       const cmd2 = Command.make("grep localhost")
       
-      const piped = cmd1.pipe(cmd2)
+      const piped = Command.pipe(cmd1, cmd2)
       
       expect(piped.value).toBe("cat /etc/hosts | grep localhost")
     })
@@ -25,21 +29,36 @@ describe("Command Domain", () => {
   
   it.effect("ExitCode.isSuccess detects success", () =>
     Effect.gen(function* () {
-      const success = new ExitCode({ value: 0 })
-      const failure = new ExitCode({ value: 1 })
+      const success = ExitCode.Success
+      const failure = ExitCode.GeneralError
       
-      expect(success.isSuccess()).toBe(true)
-      expect(failure.isSuccess()).toBe(false)
+      expect(ExitCode.isSuccess(success)).toBe(true)
+      expect(ExitCode.isSuccess(failure)).toBe(false)
     })
   )
   
   it.effect("Stdout.contains finds substrings", () =>
     Effect.gen(function* () {
-      const stdout = new Stdout({ value: "Hello World\nTest Output" })
+      const stdout = "Hello World\nTest Output" as Stdout
       
-      expect(stdout.contains("Hello")).toBe(true)
-      expect(stdout.contains("Missing")).toBe(false)
-      expect(stdout.lines()).toHaveLength(2)
+      expect(Stdout.contains(stdout, "Hello")).toBe(true)
+      expect(Stdout.contains(stdout, "Missing")).toBe(false)
+      expect(Stdout.lines(stdout)).toHaveLength(2)
+    })
+  )
+  
+  it.effect("CommandResult.succeeded checks exit code", () =>
+    Effect.gen(function* () {
+      const result: CommandResult = {
+        command: Command.make("test"),
+        exitCode: ExitCode.Success,
+        stdout: Stdout.Empty,
+        stderr: Stderr.Empty,
+        duration: 100
+      }
+      
+      expect(CommandResult.succeeded(result)).toBe(true)
+      expect(CommandResult.failed(result)).toBe(false)
     })
   )
 })
