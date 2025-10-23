@@ -97,7 +97,7 @@ with open('$CONFIG_FILE', 'r') as f:
     fi
 }
 
-create_default_config() {
+create_example_config() {
     log_info "Creating default test configuration..."
     cat > "$CONFIG_FILE" << 'EOF'
 # Integration test configuration
@@ -129,38 +129,8 @@ sections:
     required_vms: 1
     estimated_time: "5 minutes"
     requires_nested_virt: false
-    
-  vyos_config:
-    description: "VyOS router configuration"
-    playbook: site.yml
-    tags: [vyos]
-    inventory: test-inventory/vyos
-    validate_script: validation/validate-vyos.sh
-    required_vms: 1
-    estimated_time: "10 minutes"
-    requires_nested_virt: true
-    
-  harvester_single:
-    description: "Single node Harvester setup"
-    playbook: site.yml
-    tags: [harvester]
-    inventory: test-inventory/single-node
-    validate_script: validation/validate-harvester-single.sh
-    required_vms: 1
-    estimated_time: "15 minutes"
-    requires_nested_virt: true
-    
-  harvester_cluster:
-    description: "3-node Harvester cluster"
-    playbook: site.yml
-    tags: [harvester]
-    inventory: test-inventory/cluster
-    validate_script: validation/validate-harvester-cluster.sh
-    required_vms: 3
-    estimated_time: "30 minutes"
-    requires_nested_virt: true
 EOF
-    log_success "Created $CONFIG_FILE"
+    log_success "Created example $CONFIG_FILE"
 }
 
 check_dependencies() {

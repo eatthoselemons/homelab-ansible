@@ -1,12 +1,54 @@
-roles/ansible_systemd*
-ansible-venv
-ansible/roles/*
-images/
-*.iso
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
-references/*
+.env.local
+
+# Ansible
+*.retry
+.ansible/
+
+# Testing
+tests/logs/
+tests/inventory/
+tests/vagrant/.vagrant/
 
 # Task tracking files (used for PR descriptions)
 docs/humans/tasks/*.md
 !docs/humans/tasks/README.md
 !docs/humans/tasks/TASK-TEMPLATE.md
+
+# exclude dependencies
+roles/ansible_systemd*
+ansible-venv
+ansible/roles/*
+
+# exclude created files
+images/
+*.iso
+.env
+references/*
