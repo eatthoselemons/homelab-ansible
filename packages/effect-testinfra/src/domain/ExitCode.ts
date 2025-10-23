@@ -4,18 +4,18 @@ import { Schema } from "@effect/schema"
  * ExitCode - NOT a number!
  * Represents a process exit code (0-255)
  */
-export const ExitCodeSchema = Schema.Number.pipe(
+export const ExitCode = Schema.Number.pipe(
   Schema.int(),
   Schema.between(0, 255),
   Schema.brand("ExitCode")
 )
 
-export type ExitCode = Schema.Schema.Type<typeof ExitCodeSchema>
+export type ExitCode = Schema.Schema.Type<typeof ExitCode>
 
 /**
  * Pure functions for working with ExitCodes
  */
-export namespace ExitCode {
+export namespace ExitCodeNamespace {
   export const isSuccess = (exitCode: ExitCode): boolean =>
     exitCode === 0
   

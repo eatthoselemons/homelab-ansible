@@ -1,15 +1,15 @@
 import { describe, it, expect } from "@effect/vitest"
 import { Effect } from "effect"
-import { Command } from "../Command.js"
-import { ExitCode } from "../ExitCode.js"
-import { Stdout } from "../Stdout.js"
-import { Stderr } from "../Stderr.js"
-import { CommandResult } from "../CommandResult.js"
+import { CommandNamespace, type Command } from "../Command.js"
+import { ExitCodeNamespace, type ExitCode } from "../ExitCode.js"
+import { StdoutNamespace, type Stdout } from "../Stdout.js"
+import { StderrNamespace, type Stderr } from "../Stderr.js"
+import { CommandResultNamespace, type CommandResult } from "../CommandResult.js"
 
 describe("Command Domain", () => {
   it.effect("Command.make creates valid command", () =>
     Effect.gen(function* () {
-      const cmd = Command.make("ls -la")
+      const cmd = CommandNamespace.make("ls -la")
       
       expect(cmd.value).toBe("ls -la")
       expect(cmd.timeout).toBeUndefined()
@@ -18,10 +18,10 @@ describe("Command Domain", () => {
   
   it.effect("Command.pipe combines commands", () =>
     Effect.gen(function* () {
-      const cmd1 = Command.make("cat /etc/hosts")
-      const cmd2 = Command.make("grep localhost")
+      const cmd1 = CommandNamespace.make("cat /etc/hosts")
+      const cmd2 = CommandNamespace.make("grep localhost")
       
-      const piped = Command.pipe(cmd1, cmd2)
+      const piped = CommandNamespace.pipe(cmd1, cmd2)
       
       expect(piped.value).toBe("cat /etc/hosts | grep localhost")
     })
@@ -29,11 +29,11 @@ describe("Command Domain", () => {
   
   it.effect("ExitCode.isSuccess detects success", () =>
     Effect.gen(function* () {
-      const success = ExitCode.Success
-      const failure = ExitCode.GeneralError
+      const success = ExitCodeNamespace.Success
+      const failure = ExitCodeNamespace.GeneralError
       
-      expect(ExitCode.isSuccess(success)).toBe(true)
-      expect(ExitCode.isSuccess(failure)).toBe(false)
+      expect(ExitCodeNamespace.isSuccess(success)).toBe(true)
+      expect(ExitCodeNamespace.isSuccess(failure)).toBe(false)
     })
   )
   
@@ -41,24 +41,24 @@ describe("Command Domain", () => {
     Effect.gen(function* () {
       const stdout = "Hello World\nTest Output" as Stdout
       
-      expect(Stdout.contains(stdout, "Hello")).toBe(true)
-      expect(Stdout.contains(stdout, "Missing")).toBe(false)
-      expect(Stdout.lines(stdout)).toHaveLength(2)
+      expect(StdoutNamespace.contains(stdout, "Hello")).toBe(true)
+      expect(StdoutNamespace.contains(stdout, "Missing")).toBe(false)
+      expect(StdoutNamespace.lines(stdout)).toHaveLength(2)
     })
   )
   
   it.effect("CommandResult.succeeded checks exit code", () =>
     Effect.gen(function* () {
       const result: CommandResult = {
-        command: Command.make("test"),
-        exitCode: ExitCode.Success,
-        stdout: Stdout.Empty,
-        stderr: Stderr.Empty,
+        command: CommandNamespace.make("test"),
+        exitCode: ExitCodeNamespace.Success,
+        stdout: StdoutNamespace.Empty,
+        stderr: StderrNamespace.Empty,
         duration: 100
       }
       
-      expect(CommandResult.succeeded(result)).toBe(true)
-      expect(CommandResult.failed(result)).toBe(false)
+      expect(CommandResultNamespace.succeeded(result)).toBe(true)
+      expect(CommandResultNamespace.failed(result)).toBe(false)
     })
   )
 })

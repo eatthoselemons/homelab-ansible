@@ -1,10 +1,11 @@
 import { Effect, Layer, Schedule } from "effect"
 import { SSHConnection } from "./SSHConnection.js"
 import type { Command } from "../domain/Command.js"
-import { CommandResult } from "../domain/CommandResult.js"
-import { ExitCode } from "../domain/ExitCode.js"
-import { Stdout } from "../domain/Stdout.js"
-import { Stderr } from "../domain/Stderr.js"
+import type { CommandResult } from "../domain/CommandResult.js"
+import type { ExitCode } from "../domain/ExitCode.js"
+import type { Stdout } from "../domain/Stdout.js"
+import type { Stderr } from "../domain/Stderr.js"
+import { CommandResultNamespace } from "../domain/CommandResult.js"
 import { CommandError } from "../errors/CommandError.js"
 
 /**
@@ -50,7 +51,7 @@ export class CommandExecutor extends Effect.Service<CommandExecutor>()(
         Effect.gen(function* () {
           const result = yield* ssh.execute(command)
           
-          if (CommandResult.failed(result)) {
+          if (CommandResultNamespace.failed(result)) {
             yield* Effect.fail(new CommandError({
               command,
               message: `Command failed with exit code ${result.exitCode}`,

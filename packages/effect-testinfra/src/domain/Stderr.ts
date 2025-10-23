@@ -4,14 +4,14 @@ import { Schema } from "@effect/schema"
  * Stderr - NOT a string!
  * Represents command standard error with useful operations
  */
-export const StderrSchema = Schema.String.pipe(Schema.brand("Stderr"))
+export const Stderr = Schema.String.pipe(Schema.brand("Stderr"))
 
-export type Stderr = Schema.Schema.Type<typeof StderrSchema>
+export type Stderr = Schema.Schema.Type<typeof Stderr>
 
 /**
  * Pure functions for working with Stderr
  */
-export namespace Stderr {
+export namespace StderrNamespace {
   export const isEmpty = (stderr: Stderr): boolean =>
     stderr.trim().length === 0
   

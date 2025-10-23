@@ -4,14 +4,14 @@ import { Schema } from "@effect/schema"
  * Stdout - NOT a string!
  * Represents command standard output with useful operations
  */
-export const StdoutSchema = Schema.String.pipe(Schema.brand("Stdout"))
+export const Stdout = Schema.String.pipe(Schema.brand("Stdout"))
 
-export type Stdout = Schema.Schema.Type<typeof StdoutSchema>
+export type Stdout = Schema.Schema.Type<typeof Stdout>
 
 /**
  * Pure functions for working with Stdout
  */
-export namespace Stdout {
+export namespace StdoutNamespace {
   export const contains = (stdout: Stdout, substring: string): boolean =>
     stdout.includes(substring)
   
