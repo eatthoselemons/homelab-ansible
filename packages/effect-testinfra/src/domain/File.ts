@@ -62,7 +62,7 @@ export class FileMode extends Schema.Class<FileMode>("FileMode")({
  * Represents file size in bytes with conversion methods
  */
 export class FileSize extends Schema.Class<FileSize>("FileSize")({
-  bytes: Schema.Number.pipe(Schema.nonnegative())
+  bytes: Schema.Number.pipe(Schema.nonNegative())
 }) {
   toKB(): number {
     return this.bytes / 1024

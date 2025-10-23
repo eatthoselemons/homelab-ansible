@@ -1,13 +1,12 @@
 import { Schema } from "@effect/schema"
-import { ReadonlyArray } from "effect"
 
 /**
  * Stderr - NOT a string!
  * Represents command standard error with useful operations
  */
-export const Stderr = Schema.String.pipe(Schema.brand("Stderr"))
+export const StderrSchema = Schema.String.pipe(Schema.brand("Stderr"))
 
-export type Stderr = Schema.Schema.Type<typeof Stderr>
+export type Stderr = Schema.Schema.Type<typeof StderrSchema>
 
 /**
  * Pure functions for working with Stderr
@@ -19,7 +18,7 @@ export namespace Stderr {
   export const contains = (stderr: Stderr, substring: string): boolean =>
     stderr.includes(substring)
   
-  export const lines = (stderr: Stderr): ReadonlyArray<string> =>
+  export const lines = (stderr: Stderr): readonly string[] =>
     stderr.split('\n')
   
   export const hasError = (stderr: Stderr): boolean =>

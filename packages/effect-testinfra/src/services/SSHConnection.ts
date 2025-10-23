@@ -74,7 +74,7 @@ export const makeSSHConnectionLayer = (connection: HostConnection) =>
             cause: error
           })
         }),
-        () => Effect.promise(() => ssh.dispose())
+        () => Effect.sync(() => ssh.dispose())
       )
       
       // Return service implementation
@@ -86,8 +86,7 @@ export const makeSSHConnectionLayer = (connection: HostConnection) =>
             try: () => ssh.execCommand(
               command.value,
               { 
-                cwd: command.workingDir,
-                timeout: command.timeout 
+                cwd: command.workingDir
               }
             ),
             catch: (error) => new CommandError({

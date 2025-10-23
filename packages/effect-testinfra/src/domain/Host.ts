@@ -1,6 +1,7 @@
 import { Schema } from "@effect/schema"
 import { Context } from "effect"
-import type { Command, CommandResult } from "./Command.js"
+import type { Command } from "./Command.js"
+import type { CommandResult } from "./CommandResult.js"
 import type { CommandError } from "../errors/CommandError.js"
 
 /**

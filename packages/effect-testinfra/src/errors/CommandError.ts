@@ -1,4 +1,3 @@
-import { Schema } from "@effect/schema"
 import { Data } from "effect"
 import type { Command } from "../domain/Command.js"
 

@@ -6,13 +6,13 @@ import { Schema } from "@effect/schema"
  * 
  * Using Schema.Struct + namespace pattern (no `this` keyword)
  */
-export const Command = Schema.Struct({
+export const CommandSchema = Schema.Struct({
   value: Schema.String.pipe(Schema.nonEmptyString()),
   timeout: Schema.optional(Schema.Number.pipe(Schema.positive())),
   workingDir: Schema.optional(Schema.String),
 })
 
-export interface Command extends Schema.Schema.Type<typeof Command> {}
+export type Command = Schema.Schema.Type<typeof CommandSchema>
 
 /**
  * Pure functions for working with Commands
@@ -45,7 +45,7 @@ export namespace Command {
   /**
    * Pipe multiple commands together
    */
-  export const pipeMany = (commands: ReadonlyArray<Command>): Command =>
+  export const pipeMany = (commands: readonly Command[]): Command =>
     commands.reduce(pipe)
 }
 

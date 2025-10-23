@@ -1,13 +1,12 @@
 import { Schema } from "@effect/schema"
-import { ReadonlyArray } from "effect"
 
 /**
  * Stdout - NOT a string!
  * Represents command standard output with useful operations
  */
-export const Stdout = Schema.String.pipe(Schema.brand("Stdout"))
+export const StdoutSchema = Schema.String.pipe(Schema.brand("Stdout"))
 
-export type Stdout = Schema.Schema.Type<typeof Stdout>
+export type Stdout = Schema.Schema.Type<typeof StdoutSchema>
 
 /**
  * Pure functions for working with Stdout
@@ -19,7 +18,7 @@ export namespace Stdout {
   export const matches = (stdout: Stdout, regex: RegExp): boolean =>
     regex.test(stdout)
   
-  export const lines = (stdout: Stdout): ReadonlyArray<string> =>
+  export const lines = (stdout: Stdout): readonly string[] =>
     stdout.split('\n')
   
   export const isEmpty = (stdout: Stdout): boolean =>

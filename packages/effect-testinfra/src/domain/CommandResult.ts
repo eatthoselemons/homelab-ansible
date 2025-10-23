@@ -1,24 +1,24 @@
 import { Schema } from "@effect/schema"
 import { Effect } from "effect"
-import { Command } from "./Command.js"
-import { ExitCode } from "./ExitCode.js"
-import { Stdout } from "./Stdout.js"
-import { Stderr } from "./Stderr.js"
+import { CommandSchema } from "./Command.js"
+import { ExitCodeSchema, ExitCode } from "./ExitCode.js"
+import { StdoutSchema } from "./Stdout.js"
+import { StderrSchema, Stderr } from "./Stderr.js"
 import { CommandError } from "../errors/CommandError.js"
 
 /**
  * CommandResult - Rich result from command execution
  * Contains everything about how the command executed
  */
-export const CommandResult = Schema.Struct({
-  command: Command,
-  exitCode: ExitCode,
-  stdout: Stdout,
-  stderr: Stderr,
+export const CommandResultSchema = Schema.Struct({
+  command: CommandSchema,
+  exitCode: ExitCodeSchema,
+  stdout: StdoutSchema,
+  stderr: StderrSchema,
   duration: Schema.Number.pipe(Schema.nonNegative()), // milliseconds
 })
 
-export interface CommandResult extends Schema.Schema.Type<typeof CommandResult> {}
+export type CommandResult = Schema.Schema.Type<typeof CommandResultSchema>
 
 /**
  * Pure functions and Effects for working with CommandResults
