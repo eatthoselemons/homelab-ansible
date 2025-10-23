@@ -15,7 +15,7 @@ export const CommandResult = Schema.Struct({
   exitCode: ExitCode,
   stdout: Stdout,
   stderr: Stderr,
-  duration: Schema.Number.pipe(Schema.nonnegative()), // milliseconds
+  duration: Schema.Number.pipe(Schema.nonNegative()), // milliseconds
 })
 
 export interface CommandResult extends Schema.Schema.Type<typeof CommandResult> {}

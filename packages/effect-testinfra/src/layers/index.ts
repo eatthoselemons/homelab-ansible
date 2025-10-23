@@ -1,7 +1,7 @@
 import { Layer } from "effect"
 import type { HostConnection } from "../domain/Host.js"
 import { makeSSHConnectionLayer } from "../services/SSHConnection.js"
-import { CommandExecutorLive } from "../services/CommandExecutor.js"
+import { CommandExecutor } from "../services/CommandExecutor.js"
 
 /**
  * Create a complete layer stack for testing a host
@@ -13,7 +13,7 @@ import { CommandExecutorLive } from "../services/CommandExecutor.js"
 export const makeHostTestLayer = (connection: HostConnection) => {
   const sshLayer = makeSSHConnectionLayer(connection)
   
-  return CommandExecutorLive.pipe(
+  return CommandExecutor.Default.pipe(
     Layer.provide(sshLayer)
   )
 }

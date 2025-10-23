@@ -1,24 +1,53 @@
-import { Effect, Context, Layer } from "effect"
+import { Effect, Layer } from "effect"
 import { NodeSSH } from "node-ssh"
 import type { HostConnection } from "../domain/Host.js"
-import { Command, CommandResult, ExitCode, Stdout, Stderr } from "../domain/Command.js"
+import type { Command } from "../domain/Command.js"
+import type { CommandResult } from "../domain/CommandResult.js"
+import { ExitCode } from "../domain/ExitCode.js"
+import { Stdout } from "../domain/Stdout.js"
+import { Stderr } from "../domain/Stderr.js"
 import { CommandError } from "../errors/CommandError.js"
 import { SSHConnectionError } from "../errors/SSHConnectionError.js"
+
+/**
+ * SSHConnection Service interface
+ */
+export interface SSHConnection {
+  readonly execute: (command: Command) => Effect.Effect<CommandResult, CommandError>
+}
 
 /**
  * SSHConnection Service - Manages SSH connection and command execution
  * 
  * This service provides low-level SSH command execution.
  * Resources are automatically managed via Layer.scoped.
+ * 
+ * Usage:
+ * ```typescript
+ * const program = Effect.gen(function* () {
+ *   const ssh = yield* SSHConnection
+ *   const result = yield* ssh.execute(command)
+ * })
+ * ```
  */
-export class SSHConnection extends Context.Tag("SSHConnection")<
-  SSHConnection,
+export class SSHConnection extends Effect.Service<SSHConnection>()(
+  "SSHConnection",
   {
-    readonly execute: (
-      command: Command
-    ) => Effect.Effect<CommandResult, CommandError>
+    effect: Effect.dieMessage("SSHConnection must be created via makeSSHConnectionLayer"),
+    dependencies: []
   }
->() {}
+) {
+  static Test = Layer.succeed(SSHConnection, {
+    execute: (_command: Command) =>
+      Effect.succeed({
+        command: _command,
+        exitCode: 0 as ExitCode,
+        stdout: "mock output" as Stdout,
+        stderr: "" as Stderr,
+        duration: 100
+      } satisfies CommandResult)
+  })
+}
 
 /**
  * Create an SSHConnection layer for a given host
@@ -70,13 +99,13 @@ export const makeSSHConnectionLayer = (connection: HostConnection) =>
           
           const duration = Date.now() - startTime
           
-          return new CommandResult({
+          return {
             command,
-            exitCode: new ExitCode({ value: result.code || 0 }),
-            stdout: new Stdout({ value: result.stdout }),
-            stderr: new Stderr({ value: result.stderr }),
+            exitCode: (result.code ?? 0) as ExitCode,
+            stdout: (result.stdout ?? "") as Stdout,
+            stderr: (result.stderr ?? "") as Stderr,
             duration
-          })
+          } satisfies CommandResult
         })
       
       return { execute }
